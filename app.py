@@ -243,8 +243,13 @@ with tab_repo:
             rank = i + 1
             rank_str = {1: "🥇 #1", 2: "🥈 #2", 3: "🥉 #3"}.get(rank, f"#{rank}")
             badges_html = " ".join(badge_pill_html(b) for b in (badge_map.get(m["login"]) or []))
-            top_cls = "top" if rank == 1 else ""
+            top_cls  = "top" if rank == 1 else ""
             gold_cls = "gold" if rank == 1 else ""
+            badges_row = (
+                f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">{badges_html}</div>'
+                if badges_html else ""
+            )
+            spark = _sparkline(m.get("weekly_commits", []))
 
             col.markdown(
                 f'<div class="contrib-card {top_cls}">'
@@ -266,9 +271,7 @@ with tab_repo:
                 f'<div><div style="font-size:10px;color:#6B6B6B">Streak</div>'
                 f'<div style="font-size:15px;font-weight:500">{m["streak"]}d</div></div>'
                 f'</div>'
-                f'{"<div style=\\"display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px\\">" + badges_html + "</div>" if badges_html else ""}'
-                f'{_sparkline(m.get("weekly_commits", []))}'
-                f'</div>',
+                f'{badges_row}{spark}</div>',
                 unsafe_allow_html=True,
             )
 
