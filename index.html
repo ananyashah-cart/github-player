@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GitHub Leaderboard ✦</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#FAF8F5;--card:#FFFFFF;--border:rgba(0,0,0,0.08);
+  --text:#1A1A1A;--muted:#6B6B6B;--gold:#EF9F27;--purple:#7F77DD;
+  --leg-bg:#EEEDFE;--leg-tx:#3C3489;
+  --epi-bg:#E6F1FB;--epi-tx:#0C447C;
+  --rar-bg:#FAEEDA;--rar-tx:#633806;
+  --com-bg:#EAF3DE;--com-tx:#27500A;
+  --cur-bg:#FBEAF0;--cur-tx:#72243E;
+}
+
+body{background:var(--bg);font-family:'Inter',system-ui,-apple-system,sans-serif;
+  color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+
+#app{max-width:900px;margin:0 auto;padding:2rem 1rem 6rem}
+
+/* ── SETUP SCREEN ── */
+.setup-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:1.5rem;padding:2rem}
+.setup-logo{font-size:2rem;font-weight:500;letter-spacing:-0.02em;color:var(--text)}
+.setup-logo span{color:var(--gold)}
+.setup-card{background:var(--card);border:.5px solid var(--border);border-radius:12px;
+  padding:2rem;width:100%;max-width:440px;display:flex;flex-direction:column;gap:1rem}
+.setup-card label{font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.05em;display:block;margin-bottom:.3rem}
+.setup-card input{width:100%;padding:.6rem .75rem;border:.5px solid var(--border);
+  border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);
+  color:var(--text);outline:none;transition:border-color .15s}
+.setup-card input:focus{border-color:var(--purple)}
+.setup-card input::placeholder{color:var(--muted)}
+.btn-primary{padding:.65rem 1.25rem;background:var(--text);color:#fff;border:none;
+  border-radius:6px;font-size:13px;font-family:inherit;font-weight:500;cursor:pointer;
+  transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.btn-sm{padding:.35rem .7rem;background:transparent;border:.5px solid var(--border);
+  border-radius:5px;font-size:12px;font-family:inherit;cursor:pointer;color:var(--muted);
+  transition:all .15s}
+.btn-sm:hover{border-color:var(--text);color:var(--text)}
+.error-msg{background:#FEF2F2;border:.5px solid #FECACA;border-radius:6px;
+  padding:.6rem .8rem;font-size:13px;color:#DC2626}
+
+/* ── SETTINGS MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;
+  display:flex;align-items:center;justify-content:center}
+.modal-box{background:var(--card);border-radius:12px;padding:1.5rem;
+  width:90%;max-width:420px;display:flex;flex-direction:column;gap:1rem}
+.modal-title{font-size:15px;font-weight:500}
+
+/* ── TOP BAR ── */
+.top-bar{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:2rem;gap:1rem}
+.top-title{font-size:17px;font-weight:500;letter-spacing:-.01em}
+.top-title .repo-name{color:var(--muted);font-weight:400;font-size:13px;margin-left:.5rem}
+.top-actions{display:flex;gap:.5rem;align-items:center}
+.rate-counter{font-size:11px;color:var(--muted)}
+
+/* ── SECTION LABEL ── */
+.section-label{font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:.75rem}
+
+/* ── STATS STRIP ── */
+.stats-strip{display:flex;gap:.75rem;overflow-x:auto;padding-bottom:.5rem;margin-bottom:2rem;
+  scrollbar-width:none}
+.stats-strip::-webkit-scrollbar{display:none}
+.stat-card{background:var(--card);border:.5px solid var(--border);border-radius:8px;
+  padding:.75rem 1rem;min-width:100px;flex-shrink:0}
+.stat-label{font-size:11px;color:var(--muted);margin-bottom:.25rem;white-space:nowrap}
+.stat-value{font-size:20px;font-weight:500;white-space:nowrap}
+.stat-pills{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem}
+.lang-pill{font-size:10px;padding:.1rem .45rem;border-radius:3px;
+  background:var(--bg);border:.5px solid var(--border);color:var(--muted)}
+
+/* ── DOC HEALTH ── */
+.doc-health{background:var(--card);border:.5px solid var(--border);border-radius:8px;
+  padding:1.25rem;margin-bottom:2rem}
+.doc-health-inner{display:flex;gap:1.5rem;align-items:flex-start}
+.grade-block{display:flex;flex-direction:column;align-items:center;gap:.25rem;min-width:80px}
+.grade-letter{font-size:56px;font-weight:500;line-height:1;
+  animation:gradePulse 2.5s ease-in-out infinite}
+.grade-score{font-size:13px;color:var(--muted);font-weight:500}
+.grade-label{font-size:11px;color:var(--muted);text-align:center}
+@keyframes gradePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.doc-signals{flex:1;display:flex;flex-direction:column;gap:.6rem}
+.signal-row{display:flex;align-items:center;gap:.6rem}
+.signal-icon{font-size:14px;width:18px;text-align:center}
+.signal-name{font-size:12px;color:var(--text);width:180px;flex-shrink:0}
+.signal-bar-wrap{flex:1;height:5px;background:var(--bg);border-radius:3px;overflow:hidden}
+.signal-bar{height:100%;border-radius:3px;transition:width .6s ease}
+.signal-pts{font-size:11px;color:var(--muted);white-space:nowrap;min-width:50px;text-align:right}
+.fix-list{margin-top:1rem;padding-top:1rem;border-top:.5px solid var(--border)}
+.fix-list-title{font-size:11px;font-weight:500;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--muted);margin-bottom:.5rem}
+.fix-item{font-size:12px;color:var(--muted);padding:.2rem 0}
+
+/* ── LEADERBOARD ── */
+.leaderboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+  gap:1rem;margin-bottom:2rem}
+
+/* ── CONTRIBUTOR CARD ── */
+.contributor-card{background:var(--card);border:.5px solid var(--border);border-radius:8px;
+  padding:1rem;display:flex;flex-direction:column;gap:.6rem;
+  transition:transform .15s ease,box-shadow .15s ease;position:relative;cursor:default}
+.contributor-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,0,0,.06)}
+.contributor-card.rank-1{border:1.5px solid var(--gold)}
+.sprite-wrap{display:flex;justify-content:center;height:50px;align-items:flex-end}
+.card-header{display:flex;align-items:center;gap:.6rem}
+.avatar{width:32px;height:32px;border-radius:50%;border:.5px solid var(--border)}
+.card-name{font-size:13px;font-weight:500}
+.card-name a{color:var(--text);text-decoration:none}
+.card-name a:hover{color:var(--purple)}
+.rank-badge{font-size:10px;font-weight:500;padding:.15rem .4rem;border-radius:3px;
+  background:var(--bg);color:var(--muted);border:.5px solid var(--border)}
+.rank-badge.rank-1{background:#FEF9EC;color:#92600A;border-color:#F5D07A}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}
+.mini-stat{display:flex;flex-direction:column}
+.mini-stat-label{font-size:10px;color:var(--muted)}
+.mini-stat-value{font-size:15px;font-weight:500}
+.card-badges{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.2rem}
+
+/* ── SPARKLINE ── */
+.sparkline-wrap{margin-top:.3rem}
+.sparkline-label{font-size:10px;color:var(--muted);margin-bottom:.2rem}
+
+/* ── BADGE PILL ── */
+.badge-pill{display:inline-flex;align-items:center;gap:.25rem;
+  font-size:10px;font-weight:500;padding:.2rem .5rem;border-radius:20px;white-space:nowrap}
+.badge-pill.legendary{background:var(--leg-bg);color:var(--leg-tx)}
+.badge-pill.epic{background:var(--epi-bg);color:var(--epi-tx)}
+.badge-pill.rare{background:var(--rar-bg);color:var(--rar-tx)}
+.badge-pill.common{background:var(--com-bg);color:var(--com-tx)}
+.badge-pill.cursed{background:var(--cur-bg);color:var(--cur-tx)}
+
+/* ── HALL OF SHAME ── */
+.shame-section{margin-bottom:2rem}
+.shame-grid{display:flex;gap:.75rem;flex-wrap:wrap}
+.shame-card{background:var(--card);border:.5px solid var(--border);border-radius:8px;
+  padding:.9rem 1rem;flex:1;min-width:200px;max-width:300px}
+.shame-icon{font-size:20px;margin-bottom:.3rem}
+.shame-title{font-size:12px;font-weight:500;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem}
+.shame-name{font-size:14px;font-weight:500}
+.shame-roast{font-size:11px;color:var(--muted);margin-top:.25rem}
+
+/* ── LOADING SKELETON ── */
+.skeleton{background:linear-gradient(90deg,#f0ede8 25%,#e8e4de 50%,#f0ede8 75%);
+  background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.loading-wrap{padding:3rem 0;display:flex;flex-direction:column;gap:1rem}
+.skel-strip{display:flex;gap:.75rem}
+.skel-card{height:72px;flex:1;min-width:100px}
+.skel-block{height:180px;width:100%}
+.skel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.skel-lcard{height:220px}
+
+/* ── PIXEL SPRITES ── */
+.sprite-svg{image-rendering:pixelated;image-rendering:crisp-edges}
+.sprite-bounce{animation:spriteBounce .55s ease-in-out infinite}
+@keyframes spriteBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+
+/* ── WANDERING SPRITES ── */
+.wanderers{position:fixed;bottom:18px;left:0;width:100%;pointer-events:none;z-index:50;height:50px}
+.wanderer{position:absolute;bottom:0}
+.wanderer-1{animation:wanderRight 12s linear infinite}
+.wanderer-2{animation:wanderRight 17s 4s linear infinite}
+.wanderer-3{animation:wanderLeft 14s 8s linear infinite}
+@keyframes wanderRight{0%{transform:translateX(-60px) scaleX(1)}100%{transform:translateX(calc(100vw + 60px)) scaleX(1)}}
+@keyframes wanderLeft{0%{transform:translateX(calc(100vw + 60px)) scaleX(-1)}100%{transform:translateX(-60px) scaleX(-1)}}
+
+/* ── FOOTER ── */
+.footer{position:fixed;bottom:0;left:0;right:0;background:var(--bg);
+  border-top:.5px solid var(--border);padding:.5rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)}
+.footer-left{display:flex;gap:1rem;align-items:center}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .leaderboard-grid{grid-template-columns:1fr}
+  .doc-health-inner{flex-direction:column}
+  .grade-block{flex-direction:row;gap:1rem;min-width:auto}
+  .signal-name{width:120px}
+}
+
+/* ── SETTINGS BTN ── */
+.settings-btn{background:none;border:none;cursor:pointer;font-size:16px;
+  color:var(--muted);padding:.25rem;line-height:1;transition:color .15s}
+.settings-btn:hover{color:var(--text)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="wanderers" id="wanderers" style="display:none">
+  <div class="wanderer wanderer-1" id="wand1"></div>
+  <div class="wanderer wanderer-2" id="wand2"></div>
+  <div class="wanderer wanderer-3" id="wand3"></div>
+</div>
+<div class="footer">
+  <div class="footer-left">
+    <span id="api-counter">0 / 5000 API calls</span>
+    <span id="last-updated"></span>
+  </div>
+  <span>github leaderboard ✦</span>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════ */
+const REPO_KEY = 'ghRepo';
+const TOKEN_KEY = 'ghToken';
+const API_BASE = 'https://api.github.com';
+const DEFAULT_REPO = 'ananyashah-cart/Internet-Reliability-Code-Repository';
+
+const BADGE_DEFS = [
+  { id:'commit_king',  label:'Commit King',     icon:'👑', tier:'legendary', metric: m => m.total_commits },
+  { id:'night_owl',    label:'Night Owl',        icon:'🦉', tier:'epic',      metric: m => m.night_commits },
+  { id:'early_bird',   label:'Early Bird',       icon:'🐦', tier:'rare',      metric: m => m.early_commits },
+  { id:'line_lord',    label:'Line Lord',        icon:'📝', tier:'epic',      metric: m => m.lines_added },
+  { id:'delete_demon', label:'Delete Demon',     icon:'🔥', tier:'rare',      metric: m => m.lines_deleted },
+  { id:'on_streak',    label:'On Streak',        icon:'⚡', tier:'legendary', metric: m => m.streak },
+  { id:'speed_runner', label:'Speed Runner',     icon:'💨', tier:'common',    metric: m => m.avg_gap_hours > 0 && isFinite(m.avg_gap_hours) ? 1/m.avg_gap_hours : 0 },
+  { id:'fri_deployer', label:'Friday Deployer',  icon:'😈', tier:'cursed',    metric: m => m.friday_commits },
+];
+
+const GRADE_TIERS = [
+  { min:85, letter:'A', color:'#27500A', label:'Ship it' },
+  { min:65, letter:'B', color:'#0C447C', label:'Mostly healthy' },
+  { min:45, letter:'C', color:'#633806', label:'Needs love' },
+  { min:0,  letter:'D', color:'#72243E', label:'Docs? What docs?' },
+];
+
+const SIGNAL_DEFS = [
+  { id:'readme',    icon:'📄', label:'Root README',          max:25 },
+  { id:'subdir',    icon:'📂', label:'Subdir README coverage', max:30 },
+  { id:'comments',  icon:'💬', label:'Comment density',      max:20 },
+  { id:'configs',   icon:'⚙️',  label:'Config docs',          max:15 },
+  { id:'changelog', icon:'📋', label:'CHANGELOG / CONTRIBUTING', max:5 },
+  { id:'license',   icon:'⚖️',  label:'LICENSE file',         max:5 },
+];
+
+const LAZY_MESSAGES = new Set(['fix','wip','asdf','test','update','misc','stuff','changes','lol',
+  'fixes','typo','todo','done','temp','tmp','work','edit','minor','cleanup','ok','hm','hmm','.',
+  '..','...','commit','push','save']);
+
+/* ═══════════════════════════════════════════════════
+   PIXEL SPRITES — 8×12 grid, 4px per cell = 32×48px
+   0=transparent, letters=color indices per sprite
+═══════════════════════════════════════════════════ */
+const SPRITES = [
+  { // 0 — Blue Knight
+    name:'Blue Knight',
+    pal:{ H:'#3b5bc9', h:'#4a6fd4', B:'#5b8dd9', b:'#3d6bb0', S:'#ffcb8e', G:'#e6c619', D:'#192840', '.':null },
+    rows:[
+      '..HHH...',
+      '.HhHHh..',
+      '.HhShH..',
+      '.HHHHH..',
+      '..GGGG..',
+      '.bBBBBb.',
+      'bBBBBBBb',
+      '.bBBBBb.',
+      '..GbbG..',
+      'bB....Bb',
+      'bB....Bb',
+      'DD....DD',
+    ]
+  },
+  { // 1 — Orange Wizard
+    name:'Orange Wizard',
+    pal:{ H:'#d65108', h:'#f09050', B:'#f77b35', b:'#aa3d00', S:'#ffcb8e', G:'#ffe156', D:'#2e1500', '.':null },
+    rows:[
+      '...H....',
+      '..HHH...',
+      '.HhHhH..',
+      'HHHHHHHH',
+      '..SSSS..',
+      '..SGSG..',
+      '.BBBBBB.',
+      'bBBBBBBb',
+      '.bBBBBb.',
+      '.BB..BB.',
+      '.Bb..bB.',
+      '.DD..DD.',
+    ]
+  },
+  { // 2 — Green Archer
+    name:'Green Archer',
+    pal:{ H:'#286b35', h:'#4ba35a', B:'#3a8f4a', b:'#1a4525', S:'#ffcb8e', G:'#a8d94a', D:'#0f2e1a', W:'#6b4226', '.':null },
+    rows:[
+      '.HHHHHH.',
+      'HhHHHHhH',
+      '.HSShH..',
+      '.HHHH...',
+      '..GG...W',
+      '.HBBBBW.',
+      'HBBBBBBW',
+      '.HBBBB..',
+      '..HbbH..',
+      '.HB..BH.',
+      '.HB..BH.',
+      '.DB..BD.',
+    ]
+  },
+  { // 3 — Pink Mage
+    name:'Pink Mage',
+    pal:{ H:'#c9387a', h:'#e673a8', B:'#e673a8', b:'#a01f5c', S:'#ffcb8e', G:'#9370db', D:'#3d0025', W:'#c0a0ff', '.':null },
+    rows:[
+      '..HHH...',
+      '.HhHHh..',
+      '.HSShH..',
+      '.HHHHHG.',
+      '..GGGG..',
+      '.hBBBBh.',
+      'hBBBBBBh',
+      '.hBBBBh.',
+      '..BbbB..',
+      '.hB..Bh.',
+      '.hB..Bh.',
+      '.DD..DD.',
+    ]
+  },
+  { // 4 — Red Warrior
+    name:'Red Warrior',
+    pal:{ H:'#c82020', h:'#e04040', B:'#d94040', b:'#8f0f0f', S:'#ffcb8e', G:'#c0c0c0', D:'#2e0000', W:'#e0e0e0', '.':null },
+    rows:[
+      '.HHHHHH.',
+      'HhHHHHhH',
+      '.HSSShH.',
+      '.HHHHH.W',
+      '..GGGG.W',
+      '.bBBBB.W',
+      'bBBBBBBb',
+      '.bBBBBb.',
+      '..bGGb..',
+      '.bB..Bb.',
+      '.bB..Bb.',
+      '.DD..DD.',
+    ]
+  },
+  { // 5 — Teal Rogue
+    name:'Teal Rogue',
+    pal:{ H:'#1a7a8f', h:'#2eaabf', B:'#2eaabf', b:'#0f4d5c', S:'#ffcb8e', G:'#8090a0', D:'#0a2530', W:'#d0d0d0', '.':null },
+    rows:[
+      '.HHHHHH.',
+      'HhHHHHhH',
+      '.HSSShH.',
+      '..HHHH..',
+      '.GGGGGG.',
+      '.bBBBBb.',
+      'bBBBBBBb',
+      '.bBBBBb.',
+      '..bGGb..',
+      'Wb....bW',
+      'Wb....bW',
+      '.DD..DD.',
+    ]
+  },
+];
+
+function renderSprite(spriteIdx, pixelSize = 4, animClass = 'sprite-bounce') {
+  const s = SPRITES[spriteIdx % SPRITES.length];
+  const W = s.rows[0].length, H = s.rows.length;
+  const svgW = W * pixelSize, svgH = H * pixelSize;
+  let rects = '';
+  for (let r = 0; r < H; r++) {
+    for (let c = 0; c < W; c++) {
+      const ch = s.rows[r][c];
+      const color = s.pal[ch];
+      if (!color) continue;
+      rects += `<rect x="${c*pixelSize}" y="${r*pixelSize}" width="${pixelSize}" height="${pixelSize}" fill="${color}"/>`;
+    }
+  }
+  return `<svg class="sprite-svg ${animClass}" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   API LAYER
+═══════════════════════════════════════════════════ */
+const _cache = new Map();
+let apiCallCount = 0;
+
+function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function getRepo()  { return localStorage.getItem(REPO_KEY) || ''; }
+
+async function ghFetch(path, raw = false) {
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  if (_cache.has(url)) return _cache.get(url);
+
+  const resp = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+      Accept: raw ? 'application/vnd.github.raw' : 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+    }
+  });
+
+  apiCallCount++;
+  document.getElementById('api-counter').textContent = `${apiCallCount} / 5000 API calls`;
+
+  if (resp.status === 202) return { _computing: true };
+  if (resp.status === 401) throw Object.assign(new Error('Bad token — check your PAT'), { status: 401 });
+  if (resp.status === 404) throw Object.assign(new Error('Repo not found'), { status: 404 });
+  if (!resp.ok) throw new Error(`GitHub API error ${resp.status}`);
+
+  const data = raw ? await resp.text() : await resp.json();
+  const result = { data, headers: resp.headers, linkHeader: resp.headers.get('Link') };
+  _cache.set(url, result);
+  return result;
+}
+
+async function fetchAllPages(path, limit = 500) {
+  let results = [];
+  let url = `${API_BASE}${path}${path.includes('?') ? '&' : '?'}per_page=100`;
+  while (url && results.length < limit) {
+    const { data, linkHeader } = await ghFetch(url);
+    results = results.concat(data);
+    const match = linkHeader && linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+    url = match ? match[1] : null;
+  }
+  return results;
+}
+
+async function pollStats(path, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    const result = await ghFetch(path);
+    if (!result._computing) return result;
+    await new Promise(r => setTimeout(r, 3000 * (i + 1)));
+    _cache.delete(`${API_BASE}${path}`);
+  }
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════
+   DATA PROCESSING
+═══════════════════════════════════════════════════ */
+function daysAgo(n) {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString();
+}
+
+function timeAgo(isoStr) {
+  const diff = Date.now() - new Date(isoStr).getTime();
+  const d = Math.floor(diff / 86400000);
+  if (d === 0) return 'today';
+  if (d === 1) return 'yesterday';
+  return `${d}d ago`;
+}
+
+function computeStreak(dateSet) {
+  const days = [...dateSet].sort();
+  if (!days.length) return 0;
+  let max = 1, cur = 1;
+  for (let i = 1; i < days.length; i++) {
+    const diffMs = new Date(days[i]) - new Date(days[i-1]);
+    if (diffMs <= 86400000 * 1.5) cur++;
+    else cur = 1;
+    if (cur > max) max = cur;
+  }
+  return max;
+}
+
+function computeContributorMetrics(statsData, commitList) {
+  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const metrics = {};
+
+  // Build from stats/contributors (weekly buckets)
+  for (const contributor of statsData) {
+    if (!contributor.author) continue;
+    const login = contributor.author.login;
+    metrics[login] = {
+      login,
+      avatar: contributor.author.avatar_url,
+      total_commits: 0,
+      lines_added: 0,
+      lines_deleted: 0,
+      night_commits: 0,
+      early_commits: 0,
+      friday_commits: 0,
+      streak: 0,
+      avg_gap_hours: Infinity,
+      commit_days: new Set(),
+      commit_timestamps: [],
+      weekly_commits: [],
+    };
+    for (const w of contributor.weeks) {
+      const wEnd = (w.w + 7 * 86400) * 1000;
+      if (wEnd >= thirtyDaysAgo) {
+        metrics[login].total_commits += w.c;
+        metrics[login].lines_added  += w.a;
+        metrics[login].lines_deleted += w.d;
+        metrics[login].weekly_commits.push({ ts: w.w * 1000, c: w.c });
+      }
+    }
+  }
+
+  // Enrich with timestamp-based metrics from commit list
+  for (const commit of commitList) {
+    const login = commit.author?.login;
+    if (!login || !metrics[login]) continue;
+    const date = new Date(commit.commit.author.date);
+    const hour = date.getUTCHours();
+    const dow  = date.getUTCDay();
+    const dateStr = date.toISOString().split('T')[0];
+    if (hour >= 18) metrics[login].night_commits++;
+    if (hour < 10)  metrics[login].early_commits++;
+    if (dow === 5)  metrics[login].friday_commits++;
+    metrics[login].commit_days.add(dateStr);
+    metrics[login].commit_timestamps.push(date.getTime());
+  }
+
+  // Compute streak and avg gap
+  for (const m of Object.values(metrics)) {
+    m.streak = computeStreak(m.commit_days);
+    const ts = [...m.commit_timestamps].sort((a,b) => a-b);
+    if (ts.length > 1) {
+      const gaps = ts.slice(1).map((t,i) => t - ts[i]);
+      m.avg_gap_hours = gaps.reduce((a,b) => a+b, 0) / gaps.length / 3600000;
+    }
+  }
+
+  // Remove contributors with 0 commits in window
+  return Object.fromEntries(Object.entries(metrics).filter(([,m]) => m.total_commits > 0));
+}
+
+function assignBadges(metricsMap) {
+  const list = Object.values(metricsMap);
+  const badgeMap = {};
+  for (const login of Object.keys(metricsMap)) badgeMap[login] = [];
+
+  for (const badge of BADGE_DEFS) {
+    const scored = list.map(m => ({ login: m.login, val: badge.metric(m) }));
+    const max = Math.max(...scored.map(v => v.val));
+    if (max <= 0) continue;
+    for (const s of scored) {
+      if (s.val === max) badgeMap[s.login].push(badge);
+    }
+  }
+  return badgeMap;
+}
+
+function isLazyCommit(msg) {
+  if (!msg) return true;
+  const clean = msg.trim().toLowerCase().split('\n')[0];
+  return clean.length < 10 || LAZY_MESSAGES.has(clean);
+}
+
+/* ═══════════════════════════════════════════════════
+   DOC HEALTH SCORING
+═══════════════════════════════════════════════════ */
+async function computeDocHealth(repo) {
+  const result = { scores: {}, total: 0, fixList: [], missingDirs: [] };
+  const CODE_EXTS = ['.js','.ts','.py','.java','.go','.rb','.cs','.cpp','.c','.rs'];
+  const README_NAMES = ['readme.md','readme.rst','readme','readme.txt'];
+  const isReadme = name => README_NAMES.includes(name.toLowerCase());
+  const isMd = name => name.toLowerCase().endsWith('.md');
+  const isCode = name => CODE_EXTS.some(e => name.toLowerCase().endsWith(e));
+
+  // Fetch root contents
+  let rootItems = [];
+  try {
+    const { data } = await ghFetch(`/repos/${repo}/contents/`);
+    rootItems = Array.isArray(data) ? data : [];
+  } catch(e) { return result; }
+
+  const rootFiles = rootItems.filter(i => i.type === 'file');
+  const rootDirs  = rootItems.filter(i => i.type === 'dir' && !i.name.startsWith('.'));
+
+  // Signal 1: Root README (+25)
+  const hasRootReadme = rootFiles.some(f => isReadme(f.name));
+  result.scores.readme = hasRootReadme ? 25 : 0;
+  if (!hasRootReadme) result.fixList.push('📄 No root README found');
+
+  // Signal 2: Subdirectory README coverage (+30)
+  let dirsWithDocs = 0;
+  const subChecks = rootDirs.slice(0, 20).map(async dir => {
+    try {
+      const { data } = await ghFetch(`/repos/${repo}/contents/${dir.name}`);
+      const items = Array.isArray(data) ? data : [];
+      if (items.some(f => f.type === 'file' && (isReadme(f.name) || isMd(f.name)))) {
+        dirsWithDocs++;
+      } else {
+        result.missingDirs.push(dir.name);
+      }
+    } catch(e) { result.missingDirs.push(dir.name); }
+  });
+  await Promise.all(subChecks);
+  const totalDirs = Math.max(rootDirs.length, 1);
+  result.scores.subdir = Math.round(30 * (dirsWithDocs / Math.min(totalDirs, 20)));
+  for (const d of result.missingDirs) result.fixList.push(`📂 /${d} is missing a README`);
+
+  // Signal 3: Comment density (+20)
+  const codeFiles = rootItems.filter(i => i.type==='file' && isCode(i.name)).slice(0, 5);
+  let totalLines = 0, commentLines = 0;
+  await Promise.all(codeFiles.map(async f => {
+    try {
+      const { data: raw } = await ghFetch(f.download_url, true);
+      const lines = raw.split('\n');
+      totalLines += lines.length;
+      for (const l of lines) {
+        const t = l.trim();
+        if (t.startsWith('//') || t.startsWith('#') || t.startsWith('/*') ||
+            t.startsWith('*') || t.startsWith('"""') || t.startsWith("'''")) {
+          commentLines++;
+        }
+      }
+    } catch(e) {}
+  }));
+  if (totalLines > 0) {
+    const density = commentLines / totalLines;
+    result.scores.comments = Math.round(20 * Math.min(1, density / 0.15));
+    if (density < 0.05) result.fixList.push('💬 Very low comment density in code files');
+  } else {
+    result.scores.comments = 10; // no code files, give partial credit
+  }
+
+  // Signal 4: Config files documented (+15)
+  const CONFIG_FILES = ['.env.example','docker-compose.yml','makefile','dockerfile'];
+  const rootFileNames = rootFiles.map(f => f.name.toLowerCase());
+  const rootDirNames  = rootItems.map(i => i.name.toLowerCase());
+  const foundConfigs = [];
+  for (const c of CONFIG_FILES) if (rootFileNames.includes(c)) foundConfigs.push(c);
+  if (rootDirNames.includes('.github')) foundConfigs.push('.github');
+  const docedConfigs = foundConfigs.filter(c => {
+    const baseName = c.replace(/\.[^.]+$/, '');
+    return rootFileNames.some(f => f === `${baseName}.md` || f === `${baseName}-docs.md`)
+        || rootFiles.some(f => isReadme(f.name));
+  });
+  if (foundConfigs.length > 0) {
+    result.scores.configs = Math.round(15 * (docedConfigs.length / foundConfigs.length));
+    if (docedConfigs.length < foundConfigs.length) {
+      result.fixList.push(`⚙️ ${foundConfigs.length - docedConfigs.length} config file(s) lack adjacent docs`);
+    }
+  } else {
+    result.scores.configs = 8;
+  }
+
+  // Signal 5: CHANGELOG / CONTRIBUTING (+5)
+  const CHANGE_NAMES = ['changelog.md','changelog','contributing.md','contributing'];
+  const hasChangelog = rootFiles.some(f => CHANGE_NAMES.includes(f.name.toLowerCase()));
+  result.scores.changelog = hasChangelog ? 5 : 0;
+  if (!hasChangelog) result.fixList.push('📋 No CHANGELOG.md or CONTRIBUTING.md found');
+
+  // Signal 6: LICENSE (+5)
+  const LIC_NAMES = ['license','license.md','license.txt'];
+  const hasLicense = rootFiles.some(f => LIC_NAMES.includes(f.name.toLowerCase()));
+  result.scores.license = hasLicense ? 5 : 0;
+  if (!hasLicense) result.fixList.push('⚖️ No LICENSE file found');
+
+  result.total = Object.values(result.scores).reduce((a,b) => a+b, 0);
+  return result;
+}
+
+function getGrade(score) {
+  return GRADE_TIERS.find(t => score >= t.min) || GRADE_TIERS[GRADE_TIERS.length - 1];
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — BADGE PILL
+═══════════════════════════════════════════════════ */
+function renderBadgePill(badge) {
+  return `<span class="badge-pill ${badge.tier}">${badge.icon} ${badge.label}</span>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — STATS STRIP
+═══════════════════════════════════════════════════ */
+function renderStatsStrip(repo, langs, contribs) {
+  const sizeKb = repo.size || 0;
+  const sizeMb = (sizeKb / 1024).toFixed(1);
+  const langEntries = Object.entries(langs || {})
+    .sort((a,b) => b[1]-a[1]).slice(0,3);
+  const langPills = langEntries.map(([l]) =>
+    `<span class="lang-pill">${l}</span>`).join('');
+
+  const stats = [
+    { label:'Repo size',     value:`${sizeMb} MB` },
+    { label:'Language',      value: repo.language || '—' },
+    { label:'Top languages', value:'', pills: langPills },
+    { label:'Stars',         value: (repo.stargazers_count||0).toLocaleString() },
+    { label:'Forks',         value: (repo.forks_count||0).toLocaleString() },
+    { label:'Open issues',   value: (repo.open_issues_count||0).toLocaleString() },
+    { label:'Last pushed',   value: timeAgo(repo.pushed_at) },
+    { label:'Contributors',  value: (contribs.length||0).toString() },
+  ];
+
+  return `
+    <div class="section-label">Repo Overview</div>
+    <div class="stats-strip">
+      ${stats.map(s => `
+        <div class="stat-card">
+          <div class="stat-label">${s.label}</div>
+          ${s.pills
+            ? `<div class="stat-pills">${s.pills}</div>`
+            : `<div class="stat-value">${s.value}</div>`
+          }
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — DOC HEALTH
+═══════════════════════════════════════════════════ */
+function renderDocHealth(health) {
+  const grade = getGrade(health.total);
+  const signalRows = SIGNAL_DEFS.map(sig => {
+    const earned = health.scores[sig.id] || 0;
+    const pct = Math.round((earned / sig.max) * 100);
+    const barColor = pct >= 80 ? '#4ade80' : pct >= 50 ? '#fbbf24' : '#f87171';
+    return `
+      <div class="signal-row">
+        <span class="signal-icon">${sig.icon}</span>
+        <span class="signal-name">${sig.label}</span>
+        <div class="signal-bar-wrap">
+          <div class="signal-bar" style="width:${pct}%;background:${barColor}"></div>
+        </div>
+        <span class="signal-pts">${earned} / ${sig.max} pts</span>
+      </div>`;
+  }).join('');
+
+  const fixItems = health.fixList.length > 0 && health.total < 85
+    ? `<div class="fix-list">
+        <div class="fix-list-title">Fix List</div>
+        ${health.fixList.map(f => `<div class="fix-item">${f}</div>`).join('')}
+       </div>`
+    : '';
+
+  return `
+    <div class="section-label">Doc Health</div>
+    <div class="doc-health">
+      <div class="doc-health-inner">
+        <div class="grade-block">
+          <div class="grade-letter" style="color:${grade.color}">${grade.letter}</div>
+          <div class="grade-score">${health.total} / 100</div>
+          <div class="grade-label">${grade.label}</div>
+        </div>
+        <div class="doc-signals">${signalRows}</div>
+      </div>
+      ${fixItems}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — SPARKLINE
+═══════════════════════════════════════════════════ */
+function renderSparkline(weeklyCommits) {
+  if (!weeklyCommits || weeklyCommits.length < 2) return '';
+  const vals = weeklyCommits.map(w => w.c);
+  const max = Math.max(...vals, 1);
+  const W = 100, H = 30, pad = 2;
+  const points = vals.map((v, i) => {
+    const x = pad + (i / (vals.length - 1)) * (W - 2*pad);
+    const y = H - pad - ((v / max) * (H - 2*pad));
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `
+    <div class="sparkline-wrap">
+      <div class="sparkline-label">Activity (last 30d)</div>
+      <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="${points}" fill="none" stroke="#7F77DD" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — CONTRIBUTOR CARD
+═══════════════════════════════════════════════════ */
+function renderContributorCard(m, badges, rank, spriteIdx) {
+  const isFirst = rank === 1;
+  const rankStr = rank === 1 ? '🥇 #1' : rank === 2 ? '🥈 #2' : rank === 3 ? '🥉 #3' : `#${rank}`;
+  const badgeHtml = (badges || []).map(b => renderBadgePill(b)).join('');
+  const sparkSvg  = renderSparkline(m.weekly_commits);
+
+  return `
+    <div class="contributor-card${isFirst ? ' rank-1' : ''}">
+      <div class="sprite-wrap">${renderSprite(spriteIdx)}</div>
+      <div class="card-header">
+        <img class="avatar" src="https://avatars.githubusercontent.com/u/0?u=${m.login}&s=64"
+             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(m.login)}&background=E8E4DF&color=6B6B6B&size=64'" alt="">
+        <div>
+          <div class="card-name">
+            <a href="https://github.com/${m.login}" target="_blank">${m.login}</a>
+          </div>
+          <span class="rank-badge ${isFirst ? 'rank-1' : ''}">${rankStr}</span>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="mini-stat">
+          <span class="mini-stat-label">Commits</span>
+          <span class="mini-stat-value">${m.total_commits}</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Lines added</span>
+          <span class="mini-stat-value">+${(m.lines_added||0).toLocaleString()}</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Lines deleted</span>
+          <span class="mini-stat-value">-${(m.lines_deleted||0).toLocaleString()}</span>
+        </div>
+        <div class="mini-stat">
+          <span class="mini-stat-label">Streak</span>
+          <span class="mini-stat-value">${m.streak}d</span>
+        </div>
+      </div>
+      ${badgeHtml ? `<div class="card-badges">${badgeHtml}</div>` : ''}
+      ${sparkSvg}
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — LEADERBOARD
+═══════════════════════════════════════════════════ */
+function renderLeaderboard(metricsMap, badgeMap) {
+  const sorted = Object.values(metricsMap)
+    .sort((a,b) => b.total_commits - a.total_commits);
+
+  const cards = sorted.map((m, i) =>
+    renderContributorCard(m, badgeMap[m.login], i+1, i)
+  ).join('');
+
+  return `
+    <div class="section-label">Contributor Leaderboard — Last 30 Days</div>
+    <div class="leaderboard-grid">${cards}</div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — HALL OF SHAME
+═══════════════════════════════════════════════════ */
+function renderHallOfShame(metricsMap, commitList) {
+  // Lazy commit king
+  const lazyCounts = {};
+  for (const login of Object.keys(metricsMap)) lazyCounts[login] = 0;
+  for (const c of commitList) {
+    const login = c.author?.login;
+    if (login && lazyCounts[login] !== undefined && isLazyCommit(c.commit?.message)) {
+      lazyCounts[login]++;
+    }
+  }
+  const lazyEntries = Object.entries(lazyCounts).filter(([,v]) => v > 0)
+    .sort((a,b) => b[1]-a[1]);
+
+  // Friday deployers (3+ friday commits)
+  const fridayDeployers = Object.values(metricsMap)
+    .filter(m => m.friday_commits >= 3)
+    .sort((a,b) => b.friday_commits - a.friday_commits);
+
+  const cards = [];
+
+  if (lazyEntries.length > 0) {
+    const [name, count] = lazyEntries[0];
+    const roasts = [
+      `${count} commits with messages like "fix" and "wip". A legend of ambiguity.`,
+      `${count} one-word commits. The git log equivalent of a shrug emoji.`,
+      `"fix", "update", "misc"... ${count} times. Future you is already suffering.`,
+    ];
+    cards.push(`
+      <div class="shame-card">
+        <div class="shame-icon">😬</div>
+        <div class="shame-title">Lazy Commit Award</div>
+        <div class="shame-name">${name}</div>
+        <div class="shame-roast">${roasts[Math.abs(name.charCodeAt(0)) % roasts.length]}</div>
+      </div>`);
+  }
+
+  for (const m of fridayDeployers.slice(0, 2)) {
+    const roasts = [
+      `${m.friday_commits} Friday deploys. Bold strategy. The weekend respects the chaos.`,
+      `${m.friday_commits} pushes on Fridays. Production is just a vibe at this point.`,
+      `${m.friday_commits} Friday commits. True grit. Or true chaos. Both, probably.`,
+    ];
+    cards.push(`
+      <div class="shame-card">
+        <div class="shame-icon">💀</div>
+        <div class="shame-title">Friday Deployer</div>
+        <div class="shame-name">${m.login}</div>
+        <div class="shame-roast">${roasts[Math.abs(m.login.charCodeAt(0)) % roasts.length]}</div>
+      </div>`);
+  }
+
+  if (!cards.length) return '';
+
+  return `
+    <div class="shame-section">
+      <div class="section-label">Hall of Shame</div>
+      <div class="shame-grid">${cards.join('')}</div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — SETUP SCREEN
+═══════════════════════════════════════════════════ */
+function renderSetup(prefillRepo = '', prefillToken = '', errorMsg = '') {
+  return `
+    <div class="setup-wrap">
+      <div class="setup-logo">github <span>leaderboard</span> ✦</div>
+      <div class="setup-card">
+        <div>
+          <label>GitHub Repo</label>
+          <input id="inp-repo" type="text" placeholder="owner/repo"
+            value="${escHtml(prefillRepo)}">
+        </div>
+        <div>
+          <label>Personal Access Token</label>
+          <input id="inp-token" type="password" placeholder="github_pat_..."
+            value="${escHtml(prefillToken)}">
+        </div>
+        ${errorMsg ? `<div class="error-msg">${escHtml(errorMsg)}</div>` : ''}
+        <button class="btn-primary" onclick="handleConnect()">Connect →</button>
+      </div>
+    </div>`;
+}
+
+function renderLoading(repo) {
+  return `
+    <div class="top-bar">
+      <div class="top-title">github leaderboard ✦ <span class="repo-name">${escHtml(repo)}</span></div>
+    </div>
+    <div class="loading-wrap">
+      <div class="section-label">Repo Overview</div>
+      <div class="skel-strip">
+        ${Array(8).fill(0).map(() => '<div class="skeleton skel-card"></div>').join('')}
+      </div>
+      <div class="section-label">Doc Health</div>
+      <div class="skeleton skel-block"></div>
+      <div class="section-label">Contributors</div>
+      <div class="skel-grid">
+        ${Array(3).fill(0).map(() => '<div class="skeleton skel-lcard"></div>').join('')}
+      </div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER — SETTINGS MODAL
+═══════════════════════════════════════════════════ */
+function renderSettingsModal() {
+  return `
+    <div class="modal-overlay" onclick="closeSettings(event)">
+      <div class="modal-box">
+        <div class="modal-title">Settings</div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:.3rem">GitHub Repo</label>
+          <input id="set-repo" type="text" style="width:100%;padding:.6rem .75rem;border:.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none"
+            value="${escHtml(getRepo())}">
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:.3rem">Personal Access Token</label>
+          <input id="set-token" type="password" style="width:100%;padding:.6rem .75rem;border:.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text);outline:none"
+            value="${escHtml(getToken())}">
+        </div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end">
+          <button class="btn-sm" onclick="closeSettings()">Cancel</button>
+          <button class="btn-primary" onclick="saveSettings()">Save & Reload</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ═══════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════ */
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fireConfetti() {
+  if (typeof confetti !== 'function') return;
+  confetti({ particleCount:120, spread:80, origin:{y:0.6},
+    colors:['#7F77DD','#EF9F27','#4ade80','#f87171','#60a5fa'] });
+}
+
+/* ═══════════════════════════════════════════════════
+   WANDERING SPRITES
+═══════════════════════════════════════════════════ */
+function initWanderers() {
+  document.getElementById('wanderers').style.display = 'block';
+  document.getElementById('wand1').innerHTML = renderSprite(0, 5, '');
+  document.getElementById('wand2').innerHTML = renderSprite(2, 5, '');
+  document.getElementById('wand3').innerHTML = renderSprite(4, 5, '');
+}
+
+/* ═══════════════════════════════════════════════════
+   MAIN LOAD
+═══════════════════════════════════════════════════ */
+async function loadData() {
+  const repo = getRepo();
+  const app  = document.getElementById('app');
+  app.innerHTML = renderLoading(repo);
+
+  try {
+    // Parallel fetch: repo info, languages, contributors list
+    const [{ data: repoData }, { data: langs }, contribs] = await Promise.all([
+      ghFetch(`/repos/${repo}`),
+      ghFetch(`/repos/${repo}/languages`),
+      fetchAllPages(`/repos/${repo}/contributors`),
+    ]);
+
+    // Fetch commits (last 30 days, up to 500)
+    const since = daysAgo(30);
+    const commitList = await fetchAllPages(
+      `/repos/${repo}/commits?since=${since}`, 500
+    );
+
+    // Contributor stats (with polling for 202)
+    let statsResult = await pollStats(`/repos/${repo}/stats/contributors`);
+    const statsData = statsResult?.data || [];
+
+    // Doc health
+    const health = await computeDocHealth(repo);
+
+    // Compute metrics & badges
+    const metricsMap = computeContributorMetrics(statsData, commitList);
+    const badgeMap   = assignBadges(metricsMap);
+
+    // Render full page
+    app.innerHTML = `
+      <div class="top-bar">
+        <div class="top-title">
+          github leaderboard ✦
+          <span class="repo-name">${escHtml(repo)}</span>
+        </div>
+        <div class="top-actions">
+          <button class="btn-sm" onclick="refreshData()">↻ Refresh</button>
+          <button class="settings-btn" onclick="openSettings()" title="Settings">⚙</button>
+        </div>
+      </div>
+      ${renderStatsStrip(repoData, langs, contribs)}
+      ${renderDocHealth(health)}
+      ${renderLeaderboard(metricsMap, badgeMap)}
+      ${renderHallOfShame(metricsMap, commitList)}
+    `;
+
+    document.getElementById('last-updated').textContent =
+      `Updated ${new Date().toLocaleTimeString()}`;
+
+    initWanderers();
+    setTimeout(fireConfetti, 400);
+
+  } catch(err) {
+    const isAuth = err.status === 401;
+    const is404  = err.status === 404;
+    app.innerHTML = `
+      <div class="setup-wrap">
+        <div class="setup-logo">github <span>leaderboard</span> ✦</div>
+        <div class="setup-card">
+          <div class="error-msg">${escHtml(err.message)}</div>
+          <button class="btn-primary" onclick="resetAndSetup()">
+            ${isAuth || is404 ? 'Update settings' : 'Retry'}
+          </button>
+        </div>
+      </div>`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   EVENT HANDLERS
+═══════════════════════════════════════════════════ */
+function handleConnect() {
+  const repo  = document.getElementById('inp-repo')?.value?.trim();
+  const token = document.getElementById('inp-token')?.value?.trim();
+  if (!repo || !token) {
+    document.getElementById('app').innerHTML =
+      renderSetup(repo, token, 'Please enter both repo and token.');
+    return;
+  }
+  localStorage.setItem(REPO_KEY, repo);
+  localStorage.setItem(TOKEN_KEY, token);
+  _cache.clear();
+  apiCallCount = 0;
+  loadData();
+}
+
+function refreshData() {
+  _cache.clear();
+  apiCallCount = 0;
+  document.getElementById('api-counter').textContent = '0 / 5000 API calls';
+  loadData();
+}
+
+function resetAndSetup() {
+  document.getElementById('app').innerHTML =
+    renderSetup(getRepo(), getToken());
+}
+
+function openSettings() {
+  const overlay = document.createElement('div');
+  overlay.id = 'settings-modal';
+  overlay.innerHTML = renderSettingsModal();
+  document.body.appendChild(overlay);
+}
+
+function closeSettings(e) {
+  if (e && e.target !== e.currentTarget) return;
+  document.getElementById('settings-modal')?.remove();
+}
+
+function saveSettings() {
+  const repo  = document.getElementById('set-repo')?.value?.trim();
+  const token = document.getElementById('set-token')?.value?.trim();
+  if (!repo || !token) return;
+  localStorage.setItem(REPO_KEY, repo);
+  localStorage.setItem(TOKEN_KEY, token);
+  document.getElementById('settings-modal')?.remove();
+  refreshData();
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+function init() {
+  // Pre-populate localStorage with provided defaults on very first load
+  if (!localStorage.getItem(REPO_KEY)) {
+    localStorage.setItem(REPO_KEY, DEFAULT_REPO);
+  }
+
+  const repo  = getRepo();
+  const token = getToken();
+
+  if (!token) {
+    document.getElementById('app').innerHTML =
+      renderSetup(repo, '', '');
+  } else {
+    loadData();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
