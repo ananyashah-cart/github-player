@@ -13,7 +13,7 @@ RANK_BORDER = {1: "#EF9F27", 2: "#9CA3AF", 3: "#C97E3B"}
 RANK_EMOJI  = {1: "🥇", 2: "🥈", 3: "🥉"}
 MAX_BADGES  = 4
 PER_ROW     = 4
-CARD_HEIGHT = 470     # used for iframe height calc
+CARD_HEIGHT = 540     # used for iframe height calc
 ROW_GAP     = 14
 
 
@@ -170,20 +170,20 @@ body { margin: 0; padding: 0; background: #FAF8F5;
 .xp-fill { height: 100%; border-radius: 4px; transition: width 0.8s ease; }
 
 .pc-mini { display:grid; grid-template-columns:repeat(4,1fr);
-           gap:4px; margin-bottom:7px; }
+           gap:6px; margin-bottom:10px; }
 .mini-stat {
-    background: #FAF8F5; border-radius: 5px;
-    padding: 5px 4px; text-align: center;
+    background: #FAF8F5; border-radius: 6px;
+    padding: 7px 5px; text-align: center;
 }
-.mini-val { font-size: 13px; font-weight: 500; line-height: 1.2; }
-.mini-lbl { font-size: 9px; color: #6B6B6B; }
+.mini-val { font-size: 16px; font-weight: 600; line-height: 1.2; }
+.mini-lbl { font-size: 10.5px; color: #6B6B6B; margin-top: 2px; }
 
-.pc-chips { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px; }
+.pc-chips { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
 .act-chip {
-    display: inline-block;
+    display: inline-flex; align-items: center; gap: 3px;
     background: #FAF8F5; border: 0.5px solid rgba(0,0,0,0.08);
-    border-radius: 4px; padding: 1px 6px;
-    font-size: 10px; white-space: nowrap;
+    border-radius: 6px; padding: 3px 8px;
+    font-size: 11.5px; white-space: nowrap;
 }
 
 .sprite-svg { image-rendering: pixelated; image-rendering: crisp-edges; }

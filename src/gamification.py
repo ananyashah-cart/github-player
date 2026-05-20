@@ -16,14 +16,22 @@ XP_LEVELS = [
 ]
 
 BADGE_DEFS = [
-    {"id": "commit_king",  "label": "Commit King",    "icon": "👑", "tier": "legendary"},
-    {"id": "night_owl",    "label": "Night Owl",       "icon": "🦉", "tier": "epic"},
-    {"id": "early_bird",   "label": "Early Bird",      "icon": "🐦", "tier": "rare"},
-    {"id": "line_lord",    "label": "Line Lord",       "icon": "📝", "tier": "epic"},
-    {"id": "delete_demon", "label": "Delete Demon",    "icon": "🔥", "tier": "rare"},
-    {"id": "on_streak",    "label": "On Streak",       "icon": "⚡", "tier": "legendary"},
-    {"id": "speed_runner", "label": "Speed Runner",    "icon": "💨", "tier": "common"},
-    {"id": "fri_deployer", "label": "Friday Deployer", "icon": "😈", "tier": "cursed"},
+    # ── Achievement badges ──
+    {"id": "commit_king",    "label": "Commit King",         "icon": "👑", "tier": "legendary"},
+    {"id": "line_lord",      "label": "Line Lord",            "icon": "📝", "tier": "epic"},
+    {"id": "on_streak",      "label": "On Streak",            "icon": "⚡", "tier": "legendary"},
+    {"id": "delete_demon",   "label": "Delete Demon",         "icon": "🔥", "tier": "rare"},
+    {"id": "speed_runner",   "label": "Speed Runner",         "icon": "💨", "tier": "common"},
+    # ── Activity badges ──
+    {"id": "night_owl",      "label": "Night Owl",            "icon": "🦉", "tier": "epic"},
+    {"id": "early_bird",     "label": "Early Riser",          "icon": "🐦", "tier": "rare"},
+    {"id": "workaholic",     "label": "Workaholic",           "icon": "🪦", "tier": "common"},
+    {"id": "ai_whisperer",   "label": "AI Whisperer",         "icon": "🤖", "tier": "epic"},
+    {"id": "sober_royalty",  "label": "Sober Royalty",        "icon": "🍻", "tier": "rare"},
+    # ── Cursed badges (bad) ──
+    {"id": "silent_night",   "label": "Silent Night",         "icon": "🌙", "tier": "cursed"},
+    {"id": "doc_dread",      "label": "Documentation Dread",  "icon": "📵", "tier": "cursed"},
+    {"id": "lazy_commit",    "label": "Lazy Commit",          "icon": "😬", "tier": "cursed"},
 ]
 
 TIER_STYLES = {
@@ -64,7 +72,7 @@ def get_level(xp: int) -> dict[str, Any]:
 def badge_pill_html(badge: dict) -> str:
     style = TIER_STYLES.get(badge["tier"], ("",))[0]
     return (
-        f'<span style="{style};display:inline-flex;align-items:center;gap:2px;'
-        f'font-size:9.5px;font-weight:500;padding:1px 6px;border-radius:20px;white-space:nowrap">'
+        f'<span style="{style};display:inline-flex;align-items:center;gap:4px;'
+        f'font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap">'
         f'{badge["icon"]} {badge["label"]}</span>'
     )

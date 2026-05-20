@@ -9,7 +9,7 @@ from src.api import (fetch_commit_detail, fetch_commits, fetch_contributor_stats
 from src.doc_health import SIGNAL_DEFS, get_grade, score as doc_score
 from src.gamification import compute_xp, get_level, badge_pill_html
 from src.languages import LanguageDetector
-from src.metrics import assign_badges, compute_contributor_metrics, is_lazy
+from src.metrics import assign_badges, compute_contributor_metrics
 from src.player_grid import build as build_player_grid
 from src.sprites import SPRITES, render_sprite
 from src.styles import CSS
@@ -77,9 +77,12 @@ HELP_HTML = """
       <div class="help-row">
         <div class="help-icon">🏆</div>
         <div class="help-text">
-          <div class="help-label">Badges</div>
-          <div class="help-desc">Auto-awarded — Commit King, Night Owl, Line
-          Lord, Friday Deployer, and more.</div>
+          <div class="help-label">Badges (good &amp; bad)</div>
+          <div class="help-desc">Auto-awarded. Achievements: Commit King,
+          Line Lord, On Streak. Activity: Night Owl (after 7pm), Early Riser
+          (before 9:30am), Workaholic (weekend), AI Whisperer (Claude commits),
+          Sober Royalty (Thu 6-9pm). Cursed: Silent Night (no commits 3+ days),
+          Documentation Dread (low comment ratio), Lazy Commit ("fix", "wip").</div>
         </div>
       </div>
     </div>
@@ -186,17 +189,19 @@ try:
 
     langs_ranked = LanguageDetector().rank(tree)
 
-    # If /stats/contributors stayed empty, enrich the recent commits with
-    # per-commit stats so we still get accurate lines_added/deleted. Capped
-    # to keep API usage sane on big repos.
-    if not raw_stats and commits:
-        ENRICH_LIMIT = 100
-        with st.spinner(f"Fetching per-commit stats ({min(len(commits), ENRICH_LIMIT)})…"):
+    # Enrich recent commits with full per-commit detail so metrics can compute:
+    #   - lines_added/deleted  (when /stats/contributors is empty)
+    #   - comment density per contributor  (for the Documentation Dread badge)
+    # Capped at ENRICH_LIMIT to stay well under the 5000/hr GitHub PAT limit.
+    if commits:
+        ENRICH_LIMIT = 80
+        with st.spinner(f"Fetching per-commit detail ({min(len(commits), ENRICH_LIMIT)})…"):
             for c in commits[:ENRICH_LIMIT]:
-                if "stats" not in c:
+                if "files" not in c:
                     detail = fetch_commit_detail(REPO, c["sha"], TOKEN)
                     if detail:
                         c["stats"] = detail.get("stats", {})
+                        c["files"] = detail.get("files", [])
 
     with st.spinner("Computing metrics…"):
         metrics_map = compute_contributor_metrics(raw_stats, commits)
@@ -332,49 +337,6 @@ with tab_repo:
             )
 
     st.markdown("<br>", unsafe_allow_html=True)
-
-    # ── Hall of Shame ─────────────────────────────────────────────────────────
-    lazy_counts: dict = {l: 0 for l in metrics_map}
-    for c in commits:
-        login = (c.get("author") or {}).get("login", "")
-        msg   = (c.get("commit") or {}).get("message", "")
-        if login in lazy_counts and is_lazy(msg):
-            lazy_counts[login] += 1
-
-    lazy_top = sorted(
-        [(l, v) for l, v in lazy_counts.items() if v > 0], key=lambda x: -x[1]
-    )
-    fri_devs = sorted(
-        [m for m in metrics_map.values() if m["friday_commits"] >= 3],
-        key=lambda m: -m["friday_commits"],
-    )
-
-    shame_cards = []
-    if lazy_top:
-        name, count = lazy_top[0]
-        shame_cards.append(
-            f'<div class="shame-card"><div style="font-size:18px;margin-bottom:4px">😬</div>'
-            f'<div style="font-size:10px;font-weight:500;text-transform:uppercase;'
-            f'letter-spacing:.04em;color:#6B6B6B;margin-bottom:3px">Lazy Commit Award</div>'
-            f'<div style="font-size:13px;font-weight:500">{name}</div>'
-            f'<div style="font-size:11px;color:#6B6B6B;margin-top:3px;line-height:1.5">'
-            f'{count} commits like "fix" or "wip". Future you is already suffering.</div></div>'
-        )
-    for m in fri_devs[:2]:
-        shame_cards.append(
-            f'<div class="shame-card"><div style="font-size:18px;margin-bottom:4px">💀</div>'
-            f'<div style="font-size:10px;font-weight:500;text-transform:uppercase;'
-            f'letter-spacing:.04em;color:#6B6B6B;margin-bottom:3px">Friday Deployer</div>'
-            f'<div style="font-size:13px;font-weight:500">{m["login"]}</div>'
-            f'<div style="font-size:11px;color:#6B6B6B;margin-top:3px;line-height:1.5">'
-            f'{m["friday_commits"]} pushes on a Friday. Production is just a vibe.</div></div>'
-        )
-
-    if shame_cards:
-        st.markdown('<div class="section-label">Hall of Shame</div>', unsafe_allow_html=True)
-        shame_cols = st.columns(len(shame_cards))
-        for col, html in zip(shame_cols, shame_cards):
-            col.markdown(html, unsafe_allow_html=True)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
