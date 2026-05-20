@@ -2,6 +2,7 @@
 from datetime import datetime
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from src.api import (fetch_commit_detail, fetch_commits, fetch_contributor_stats,
                      fetch_contributors, fetch_repo, fetch_tree)
@@ -9,6 +10,7 @@ from src.doc_health import SIGNAL_DEFS, get_grade, score as doc_score
 from src.gamification import compute_xp, get_level, badge_pill_html
 from src.languages import LanguageDetector
 from src.metrics import assign_badges, compute_contributor_metrics, is_lazy
+from src.player_grid import build as build_player_grid
 from src.sprites import SPRITES, render_sprite
 from src.styles import CSS
 
@@ -410,91 +412,12 @@ with tab_players:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Player Cards ──────────────────────────────────────────────────────────
+    # Rendered as a single embedded HTML grid via components.html — Streamlit's
+    # column wrapper would otherwise prevent CSS Grid from equalizing card
+    # heights across siblings.
     st.markdown('<div class="section-label">Player Cards</div>', unsafe_allow_html=True)
-
-    RANK_CLASS = {1: "g1", 2: "g2", 3: "g3"}
-    RANK_EMOJI = {1: "🥇", 2: "🥈", 3: "🥉"}
-
-    PER_ROW = 4
-    # Chunk every player into rows of PER_ROW so the full team is visible.
-    rows = [players_by_xp[r:r + PER_ROW] for r in range(0, len(players_by_xp), PER_ROW)]
-
-    for row_idx, row_players in enumerate(rows):
-        row_cols = st.columns(PER_ROW)   # always PER_ROW so card widths match across rows
-        for col_offset, (col, m) in enumerate(zip(row_cols, row_players)):
-            i      = row_idx * PER_ROW + col_offset
-            xp     = compute_xp(m, len(badge_map.get(m["login"], [])))
-            lvl    = get_level(xp)
-            badges = badge_map.get(m["login"], [])
-            rank   = i + 1
-            power  = round(xp / 10)
-
-            act_parts = []
-            if m["night_commits"]:  act_parts.append(f'<span class="act-chip">🦉 {m["night_commits"]} night</span>')
-            if m["early_commits"]:  act_parts.append(f'<span class="act-chip">🐦 {m["early_commits"]} early</span>')
-            if m["friday_commits"]: act_parts.append(f'<span class="act-chip">😈 {m["friday_commits"]} fri</span>')
-            act_html    = " ".join(act_parts)
-            badges_html = " ".join(badge_pill_html(b) for b in badges)
-
-            # Cap displayed badges so one over-decorated card doesn't blow up the
-            # uniform card height. Extras are summarized as +N.
-            MAX_BADGES = 4
-            shown_badges = badges[:MAX_BADGES]
-            extra_badge_count = len(badges) - MAX_BADGES
-            badges_html = " ".join(badge_pill_html(b) for b in shown_badges)
-            if extra_badge_count > 0:
-                badges_html += (
-                    f'<span style="font-size:9.5px;color:#6B6B6B;'
-                    f'padding:1px 6px;align-self:center">+{extra_badge_count}</span>'
-                )
-
-            col.markdown(
-                f'<div class="player-card {RANK_CLASS.get(rank, "")}">'
-                f'<div class="power-badge">'
-                f'<div class="power-num">{power}</div>'
-                f'<div class="power-lbl">power</div></div>'
-
-                f'<div class="pc-sprite">{render_sprite(i, px=5)}</div>'
-
-                f'<div class="pc-identity">'
-                f'{_avatar(m["login"], 30)}'
-                f'<div><div style="font-size:12.5px;font-weight:500;line-height:1.2">'
-                f'<a href="https://github.com/{m["login"]}" target="_blank" '
-                f'style="color:#1A1A1A;text-decoration:none">{m["login"]}</a></div>'
-                f'<div style="font-size:10.5px;color:#6B6B6B">'
-                f'{RANK_EMOJI.get(rank, f"#{rank}")} · {lvl["emoji"]} {lvl["title"]}</div>'
-                f'</div></div>'
-
-                f'<div class="pc-level" style="border:.5px solid {lvl["color"]}33">'
-                f'<div class="pc-lvl-num" style="color:{lvl["color"]}">LVL {lvl["num"]}</div>'
-                f'<div><div style="font-size:11.5px;font-weight:500;color:{lvl["color"]};line-height:1.2">'
-                f'{lvl["emoji"]} {lvl["title"]}</div>'
-                f'<div style="font-size:10px;color:#6B6B6B">⚡ {xp:,} XP</div></div></div>'
-
-                f'<div class="pc-xp">'
-                f'<div class="pc-xp-row">'
-                f'<span>Level {lvl["num"]}</span>'
-                f'<span>{lvl["progress"]}% → Level {lvl["num"] + 1}</span></div>'
-                f'<div class="xp-track">'
-                f'<div class="xp-fill" style="width:{lvl["progress"]}%;background:{lvl["color"]}"></div>'
-                f'</div></div>'
-
-                f'<div class="pc-mini">'
-                f'<div class="mini-stat"><div class="mini-val">{m["total_commits"]}</div><div class="mini-lbl">Commits</div></div>'
-                f'<div class="mini-stat"><div class="mini-val">+{m["lines_added"]:,}</div><div class="mini-lbl">Lines +</div></div>'
-                f'<div class="mini-stat"><div class="mini-val">-{m["lines_deleted"]:,}</div><div class="mini-lbl">Lines −</div></div>'
-                f'<div class="mini-stat"><div class="mini-val">{m["streak"]}d</div><div class="mini-lbl">Streak</div></div>'
-                f'</div>'
-
-                + (f'<div class="pc-chips">{act_html}</div>' if act_html else "")
-                + (f'<div class="pc-chips">{badges_html}</div>' if badges_html else "")
-
-                # Spacer pushes sparkline to bottom so every card matches.
-                + '<div class="spacer"></div>'
-                + _sparkline(m.get("weekly_commits", []))
-                + "</div>",
-                unsafe_allow_html=True,
-            )
+    grid_html, grid_height = build_player_grid(players_by_xp, badge_map)
+    components.html(grid_html, height=grid_height, scrolling=False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
