@@ -162,18 +162,13 @@ with st.sidebar:
         "Repository", placeholder="owner/repo",
         value=st.session_state.get("repo", _SECRET_REPO),
     )
-    token_input = st.text_input(
-        "Personal Access Token", type="password",
-        placeholder="github_pat_…",
-        value=st.session_state.get("token", ""),
-    )
 
     c1, c2 = st.columns(2)
-    if c1.button("Connect →", type="primary", use_container_width=True):
-        if repo_input and token_input:
-            st.session_state["repo"]    = repo_input
-            st.session_state["token"]   = token_input
-            st.session_state["ready"]   = True
+    if c1.button("Load →", type="primary", use_container_width=True):
+        if repo_input:
+            st.session_state["repo"]   = repo_input
+            st.session_state["token"]  = _SECRET_TOKEN
+            st.session_state["ready"]  = True
             st.cache_data.clear()
             st.rerun()
 
@@ -185,9 +180,9 @@ with st.sidebar:
     st.caption("Cache TTL · 5 min")
 
 # ─────────────────────────────────────────────────────────────────────────────
-# AUTH GATE
+# AUTH GATE — only fires if no token configured at all
 # ─────────────────────────────────────────────────────────────────────────────
-if not st.session_state.get("ready"):
+if not _SECRET_TOKEN:
     _, mid, _ = st.columns([1, 2, 1])
     with mid:
         st.markdown(
@@ -195,13 +190,14 @@ if not st.session_state.get("ready"):
             '<div style="font-size:2rem;font-weight:500;margin-bottom:.5rem">'
             'github <span style="color:#EF9F27">leaderboard</span> ✦</div>'
             '<div style="color:#6B6B6B;font-size:13px">'
-            'Enter your repo and PAT in the sidebar →</div></div>',
+            'Add <code>GITHUB_TOKEN</code> to Streamlit secrets to get started.'
+            '</div></div>',
             unsafe_allow_html=True,
         )
     st.stop()
 
-REPO  = st.session_state["repo"]
-TOKEN = st.session_state["token"]
+REPO  = st.session_state.get("repo", _SECRET_REPO)
+TOKEN = _SECRET_TOKEN
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DATA LOADING
