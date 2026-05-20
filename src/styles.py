@@ -1,9 +1,12 @@
 """Global CSS injected into Streamlit via st.markdown."""
 
 CSS = """
-/* ── Hide default Streamlit chrome ── */
+/* ── Hide default Streamlit chrome + sidebar entirely ── */
 #MainMenu, footer, [data-testid="stDecoration"],
-[data-testid="stHeader"] { display: none !important; }
+[data-testid="stHeader"],
+[data-testid="stSidebar"],
+[data-testid="stSidebarNav"],
+[data-testid="collapsedControl"] { display: none !important; }
 
 /* ── Layout ── */
 .block-container {

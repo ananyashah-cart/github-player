@@ -19,7 +19,7 @@ st.set_page_config(
     page_title="GitHub Leaderboard ✦",
     page_icon="🎮",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
@@ -85,19 +85,12 @@ st.markdown(HELP_HTML, unsafe_allow_html=True)
 
 DEFAULT_REPO = "ananyashah-cart/Internet-Reliability-Code-Repository"
 
-# Pull token/repo from Streamlit secrets if available (deployed app), else fall
-# back to whatever the user types in the sidebar (local dev).
+# Token + repo are sourced exclusively from st.secrets. No UI choice.
 try:
     _SECRET_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
     _SECRET_REPO  = st.secrets.get("DEFAULT_REPO", DEFAULT_REPO)
 except Exception:
     _SECRET_TOKEN, _SECRET_REPO = "", DEFAULT_REPO
-
-# Auto-connect on first load when secrets are present (no PAT gate for visitors).
-if _SECRET_TOKEN and not st.session_state.get("ready"):
-    st.session_state["repo"]  = _SECRET_REPO
-    st.session_state["token"] = _SECRET_TOKEN
-    st.session_state["ready"] = True
 
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
@@ -151,36 +144,7 @@ def _time_ago(iso: str) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SIDEBAR
-# ─────────────────────────────────────────────────────────────────────────────
-with st.sidebar:
-    st.markdown("#### ✦ GitHub Leaderboard")
-    st.caption("Gamify your repo maintenance")
-    st.divider()
-
-    repo_input = st.text_input(
-        "Repository", placeholder="owner/repo",
-        value=st.session_state.get("repo", _SECRET_REPO),
-    )
-
-    c1, c2 = st.columns(2)
-    if c1.button("Load →", type="primary", use_container_width=True):
-        if repo_input:
-            st.session_state["repo"]   = repo_input
-            st.session_state["token"]  = _SECRET_TOKEN
-            st.session_state["ready"]  = True
-            st.cache_data.clear()
-            st.rerun()
-
-    if c2.button("↻ Refresh", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-
-    st.divider()
-    st.caption("Cache TTL · 5 min")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# AUTH GATE — only fires if no token configured at all
+# CONFIG GATE — no UI choice; repo + token come from st.secrets
 # ─────────────────────────────────────────────────────────────────────────────
 if not _SECRET_TOKEN:
     _, mid, _ = st.columns([1, 2, 1])
@@ -196,7 +160,7 @@ if not _SECRET_TOKEN:
         )
     st.stop()
 
-REPO  = st.session_state.get("repo", _SECRET_REPO)
+REPO  = _SECRET_REPO
 TOKEN = _SECRET_TOKEN
 
 # ─────────────────────────────────────────────────────────────────────────────
