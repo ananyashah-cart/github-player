@@ -61,14 +61,25 @@ def fetch_commits(repo: str, token: str, days: int = 30) -> list:
 
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_contributor_stats(repo: str, token: str) -> list:
+    """GitHub returns 202 while it computes stats — retry with backoff."""
     url = f"https://api.github.com/repos/{repo}/stats/contributors"
-    for attempt in range(3):
+    for attempt in range(5):
         resp = requests.get(url, headers=_headers(token), timeout=15)
         if resp.status_code == 200:
-            return resp.json()
-        if resp.status_code == 202:
-            time.sleep(3 * (attempt + 1))
+            data = resp.json()
+            if data:           # 200 with [] also means "still computing"
+                return data
+        time.sleep(2 * (attempt + 1))   # 2,4,6,8,10s → up to 30s total
     return []
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_commit_detail(repo: str, sha: str, token: str) -> dict:
+    """Single-commit detail — includes stats.{additions, deletions, total}."""
+    try:
+        return _get(f"https://api.github.com/repos/{repo}/commits/{sha}", token)
+    except Exception:
+        return {}
 
 
 @st.cache_data(ttl=300, show_spinner=False)

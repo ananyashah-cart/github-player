@@ -6,12 +6,10 @@ CODE_EXTS    = {".js", ".ts", ".py", ".java", ".go", ".rb", ".cs", ".cpp", ".c",
 COMMENT_STARTS = ("//", "#", "/*", " *", "/**", '"""', "'''", "--")
 
 SIGNAL_DEFS = [
-    ("readme",    "📄", "Root README",              25),
-    ("subdir",    "📂", "Subdir README coverage",   30),
+    ("readme",    "📄", "Root README",              30),
+    ("subdir",    "📂", "Subdir README coverage",   35),
     ("comments",  "💬", "Comment density",          20),
     ("configs",   "⚙️",  "Config docs",              15),
-    ("changelog", "📋", "CHANGELOG / CONTRIBUTING",  5),
-    ("license",   "⚖️",  "LICENSE file",              5),
 ]
 
 GRADE_TIERS = [
@@ -45,13 +43,13 @@ def score(repo: str, token: str) -> dict:
     root_dirs  = [i for i in root if i["type"] == "dir" and not i["name"].startswith(".")]
     root_names = {f["name"].lower() for f in root_files}
 
-    # ── Signal 1: Root README (+25) ──
+    # ── Signal 1: Root README (+30) ──
     has_readme = any(_is_readme(f["name"]) for f in root_files)
-    result["scores"]["readme"] = 25 if has_readme else 0
+    result["scores"]["readme"] = 30 if has_readme else 0
     if not has_readme:
         result["fix_list"].append("📄 No root README found")
 
-    # ── Signal 2: Subdir README coverage (+30) ──
+    # ── Signal 2: Subdir README coverage (+35) ──
     dirs_with_docs = 0
     for d in root_dirs[:20]:
         items = fetch_contents(repo, token, d["name"])
@@ -64,7 +62,7 @@ def score(repo: str, token: str) -> dict:
             result["missing_dirs"].append(d["name"])
 
     total_dirs = max(min(len(root_dirs), 20), 1)
-    result["scores"]["subdir"] = round(30 * dirs_with_docs / total_dirs)
+    result["scores"]["subdir"] = round(35 * dirs_with_docs / total_dirs)
     for d in result["missing_dirs"]:
         result["fix_list"].append(f"📂 /{d} is missing a README")
 
@@ -95,20 +93,6 @@ def score(repo: str, token: str) -> dict:
         found.append(".github")
     documented = [c for c in found if has_readme]
     result["scores"]["configs"] = round(15 * len(documented) / max(len(found), 1)) if found else 8
-
-    # ── Signal 5: CHANGELOG / CONTRIBUTING (+5) ──
-    changelog_names = {"changelog.md", "changelog", "contributing.md", "contributing"}
-    has_changelog = bool(root_names & changelog_names)
-    result["scores"]["changelog"] = 5 if has_changelog else 0
-    if not has_changelog:
-        result["fix_list"].append("📋 No CHANGELOG.md or CONTRIBUTING.md found")
-
-    # ── Signal 6: LICENSE (+5) ──
-    license_names = {"license", "license.md", "license.txt"}
-    has_license = bool(root_names & license_names)
-    result["scores"]["license"] = 5 if has_license else 0
-    if not has_license:
-        result["fix_list"].append("⚖️ No LICENSE file found")
 
     result["total"] = sum(result["scores"].values())
     return result

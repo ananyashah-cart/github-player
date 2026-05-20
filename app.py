@@ -3,8 +3,8 @@ from datetime import datetime
 
 import streamlit as st
 
-from src.api import (fetch_commits, fetch_contributor_stats, fetch_contributors,
-                     fetch_repo, fetch_tree)
+from src.api import (fetch_commit_detail, fetch_commits, fetch_contributor_stats,
+                     fetch_contributors, fetch_repo, fetch_tree)
 from src.doc_health import SIGNAL_DEFS, get_grade, score as doc_score
 from src.gamification import compute_xp, get_level, badge_pill_html
 from src.languages import LanguageDetector
@@ -22,6 +22,66 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HELP POPUP (top-left floating "?" — first-time visitor explainer)
+# ─────────────────────────────────────────────────────────────────────────────
+HELP_HTML = """
+<details class="help-popup">
+  <summary><span>?</span></summary>
+  <div class="help-card">
+    <h4>🎮 What is this?</h4>
+    <div class="help-tagline">
+      A gamified scoreboard for your GitHub repo. We turn the last 30 days of
+      commits into player cards, badges, and XP — so maintenance feels like a
+      game instead of a chore.
+    </div>
+    <div class="help-section">
+      <div class="help-row">
+        <div class="help-icon">🏛️</div>
+        <div class="help-text">
+          <div class="help-label">Repo tab</div>
+          <div class="help-desc">Size, language mix, doc health grade, and a
+          live contributor leaderboard.</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">🎮</div>
+        <div class="help-text">
+          <div class="help-label">Players tab</div>
+          <div class="help-desc">One card per contributor with XP, level,
+          badges, and activity sparkline.</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">📊</div>
+        <div class="help-text">
+          <div class="help-label">Doc Health (A–D)</div>
+          <div class="help-desc">Scored on README presence, subdir coverage,
+          comment density, and config docs. 100 pts total.</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">⚡</div>
+        <div class="help-text">
+          <div class="help-label">XP &amp; Levels</div>
+          <div class="help-desc">Commits + lines + streak + badges = XP.
+          Levels run Lurker → Legend.</div>
+        </div>
+      </div>
+      <div class="help-row">
+        <div class="help-icon">🏆</div>
+        <div class="help-text">
+          <div class="help-label">Badges</div>
+          <div class="help-desc">Auto-awarded — Commit King, Night Owl, Line
+          Lord, Friday Deployer, and more.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+"""
+st.markdown(HELP_HTML, unsafe_allow_html=True)
 
 DEFAULT_REPO = "ananyashah-cart/Internet-Reliability-Code-Repository"
 
@@ -155,6 +215,18 @@ try:
         raw_stats    = fetch_contributor_stats(REPO, TOKEN)
 
     langs_ranked = LanguageDetector().rank(tree)
+
+    # If /stats/contributors stayed empty, enrich the recent commits with
+    # per-commit stats so we still get accurate lines_added/deleted. Capped
+    # to keep API usage sane on big repos.
+    if not raw_stats and commits:
+        ENRICH_LIMIT = 100
+        with st.spinner(f"Fetching per-commit stats ({min(len(commits), ENRICH_LIMIT)})…"):
+            for c in commits[:ENRICH_LIMIT]:
+                if "stats" not in c:
+                    detail = fetch_commit_detail(REPO, c["sha"], TOKEN)
+                    if detail:
+                        c["stats"] = detail.get("stats", {})
 
     with st.spinner("Computing metrics…"):
         metrics_map = compute_contributor_metrics(raw_stats, commits)
@@ -380,88 +452,82 @@ with tab_players:
     # ── Player Cards ──────────────────────────────────────────────────────────
     st.markdown('<div class="section-label">Player Cards</div>', unsafe_allow_html=True)
 
-    n = min(len(players_by_xp), 4)
-    p_card_cols = st.columns(n)
-
     RANK_CLASS = {1: "g1", 2: "g2", 3: "g3"}
     RANK_EMOJI = {1: "🥇", 2: "🥈", 3: "🥉"}
 
-    for i, (col, m) in enumerate(zip(p_card_cols, players_by_xp[:4])):
-        xp     = compute_xp(m, len(badge_map.get(m["login"], [])))
-        lvl    = get_level(xp)
-        badges = badge_map.get(m["login"], [])
-        rank   = i + 1
-        power  = round(xp / 10)
+    PER_ROW = 4
+    # Chunk every player into rows of PER_ROW so the full team is visible.
+    rows = [players_by_xp[r:r + PER_ROW] for r in range(0, len(players_by_xp), PER_ROW)]
 
-        act_parts = []
-        if m["night_commits"]:  act_parts.append(f'<span class="act-chip">🦉 {m["night_commits"]} night</span>')
-        if m["early_commits"]:  act_parts.append(f'<span class="act-chip">🐦 {m["early_commits"]} early</span>')
-        if m["friday_commits"]: act_parts.append(f'<span class="act-chip">😈 {m["friday_commits"]} fri</span>')
-        act_html    = " ".join(act_parts)
-        badges_html = " ".join(badge_pill_html(b) for b in badges)
+    for row_idx, row_players in enumerate(rows):
+        row_cols = st.columns(PER_ROW)   # always PER_ROW so card widths match across rows
+        for col_offset, (col, m) in enumerate(zip(row_cols, row_players)):
+            i      = row_idx * PER_ROW + col_offset
+            xp     = compute_xp(m, len(badge_map.get(m["login"], [])))
+            lvl    = get_level(xp)
+            badges = badge_map.get(m["login"], [])
+            rank   = i + 1
+            power  = round(xp / 10)
 
-        col.markdown(
-            f'<div class="player-card {RANK_CLASS.get(rank, "")}">'
+            act_parts = []
+            if m["night_commits"]:  act_parts.append(f'<span class="act-chip">🦉 {m["night_commits"]} night</span>')
+            if m["early_commits"]:  act_parts.append(f'<span class="act-chip">🐦 {m["early_commits"]} early</span>')
+            if m["friday_commits"]: act_parts.append(f'<span class="act-chip">😈 {m["friday_commits"]} fri</span>')
+            act_html    = " ".join(act_parts)
+            badges_html = " ".join(badge_pill_html(b) for b in badges)
 
-            # Power score (top-right absolute)
-            f'<div class="power-badge">'
-            f'<div class="power-num">{power}</div>'
-            f'<div class="power-lbl">power</div></div>'
+            col.markdown(
+                f'<div class="player-card {RANK_CLASS.get(rank, "")}">'
+                f'<div class="power-badge">'
+                f'<div class="power-num">{power}</div>'
+                f'<div class="power-lbl">power</div></div>'
 
-            # Sprite
-            f'<div style="display:flex;justify-content:center;height:60px;'
-            f'align-items:flex-end;margin-bottom:10px">'
-            f'{render_sprite(i, px=5)}</div>'
+                f'<div style="display:flex;justify-content:center;height:60px;'
+                f'align-items:flex-end;margin-bottom:10px">'
+                f'{render_sprite(i, px=5)}</div>'
 
-            # Identity
-            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-            f'{_avatar(m["login"], 34)}'
-            f'<div><div style="font-size:13px;font-weight:500">'
-            f'<a href="https://github.com/{m["login"]}" target="_blank" '
-            f'style="color:#1A1A1A;text-decoration:none">{m["login"]}</a></div>'
-            f'<div style="font-size:11px;color:#6B6B6B">'
-            f'{RANK_EMOJI.get(rank, f"#{rank}")} · {lvl["emoji"]} {lvl["title"]}</div>'
-            f'</div></div>'
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
+                f'{_avatar(m["login"], 34)}'
+                f'<div><div style="font-size:13px;font-weight:500">'
+                f'<a href="https://github.com/{m["login"]}" target="_blank" '
+                f'style="color:#1A1A1A;text-decoration:none">{m["login"]}</a></div>'
+                f'<div style="font-size:11px;color:#6B6B6B">'
+                f'{RANK_EMOJI.get(rank, f"#{rank}")} · {lvl["emoji"]} {lvl["title"]}</div>'
+                f'</div></div>'
 
-            # Level badge
-            f'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
-            f'background:#FAF8F5;border-radius:7px;border:.5px solid {lvl["color"]}33;'
-            f'margin-bottom:10px">'
-            f'<div style="font-size:22px;font-weight:500;color:{lvl["color"]}">LVL {lvl["num"]}</div>'
-            f'<div><div style="font-size:12px;font-weight:500;color:{lvl["color"]}">'
-            f'{lvl["emoji"]} {lvl["title"]}</div>'
-            f'<div style="font-size:10px;color:#6B6B6B">⚡ {xp:,} XP</div></div></div>'
+                f'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
+                f'background:#FAF8F5;border-radius:7px;border:.5px solid {lvl["color"]}33;'
+                f'margin-bottom:10px">'
+                f'<div style="font-size:22px;font-weight:500;color:{lvl["color"]}">LVL {lvl["num"]}</div>'
+                f'<div><div style="font-size:12px;font-weight:500;color:{lvl["color"]}">'
+                f'{lvl["emoji"]} {lvl["title"]}</div>'
+                f'<div style="font-size:10px;color:#6B6B6B">⚡ {xp:,} XP</div></div></div>'
 
-            # XP bar
-            f'<div style="margin-bottom:10px">'
-            f'<div style="display:flex;justify-content:space-between;'
-            f'font-size:10px;color:#6B6B6B;margin-bottom:3px">'
-            f'<span>Level {lvl["num"]}</span>'
-            f'<span>{lvl["progress"]}% → Level {lvl["num"] + 1}</span></div>'
-            f'<div class="xp-track">'
-            f'<div class="xp-fill" style="width:{lvl["progress"]}%;background:{lvl["color"]}"></div>'
-            f'</div></div>'
+                f'<div style="margin-bottom:10px">'
+                f'<div style="display:flex;justify-content:space-between;'
+                f'font-size:10px;color:#6B6B6B;margin-bottom:3px">'
+                f'<span>Level {lvl["num"]}</span>'
+                f'<span>{lvl["progress"]}% → Level {lvl["num"] + 1}</span></div>'
+                f'<div class="xp-track">'
+                f'<div class="xp-fill" style="width:{lvl["progress"]}%;background:{lvl["color"]}"></div>'
+                f'</div></div>'
 
-            # Mini stats
-            f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px">'
-            f'<div class="mini-stat"><div class="mini-val">{m["total_commits"]}</div><div class="mini-lbl">Commits</div></div>'
-            f'<div class="mini-stat"><div class="mini-val">+{m["lines_added"]:,}</div><div class="mini-lbl">Lines +</div></div>'
-            f'<div class="mini-stat"><div class="mini-val">-{m["lines_deleted"]:,}</div><div class="mini-lbl">Lines −</div></div>'
-            f'<div class="mini-stat"><div class="mini-val">{m["streak"]}d</div><div class="mini-lbl">Streak</div></div>'
-            f'</div>'
+                f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px">'
+                f'<div class="mini-stat"><div class="mini-val">{m["total_commits"]}</div><div class="mini-lbl">Commits</div></div>'
+                f'<div class="mini-stat"><div class="mini-val">+{m["lines_added"]:,}</div><div class="mini-lbl">Lines +</div></div>'
+                f'<div class="mini-stat"><div class="mini-val">-{m["lines_deleted"]:,}</div><div class="mini-lbl">Lines −</div></div>'
+                f'<div class="mini-stat"><div class="mini-val">{m["streak"]}d</div><div class="mini-lbl">Streak</div></div>'
+                f'</div>'
 
-            # Activity chips
-            + (f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">{act_html}</div>' if act_html else "")
+                + (f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">{act_html}</div>' if act_html else "")
+                + (f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">{badges_html}</div>' if badges_html else "")
 
-            # Badges
-            + (f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">{badges_html}</div>' if badges_html else "")
-
-            # Sparkline
-            + _sparkline(m.get("weekly_commits", []))
-
-            + "</div>",
-            unsafe_allow_html=True,
-        )
+                # Spacer pushes the sparkline to the bottom so every card matches the tallest.
+                + '<div class="spacer"></div>'
+                + _sparkline(m.get("weekly_commits", []))
+                + "</div>",
+                unsafe_allow_html=True,
+            )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -90,6 +90,10 @@ def compute_contributor_metrics(stats_data: list, commit_list: list) -> dict:
         # If /stats/contributors didn't give us a commit count, count from /commits.
         if login not in stats_had_commits:
             metrics[login]["total_commits"] += 1
+            # Pull line counts from per-commit detail if app.py enriched it.
+            stats = commit.get("stats") or {}
+            metrics[login]["lines_added"]   += stats.get("additions", 0)
+            metrics[login]["lines_deleted"] += stats.get("deletions", 0)
 
         hour = dt.hour
         dow  = dt.weekday()   # 4 = Friday (Python convention)

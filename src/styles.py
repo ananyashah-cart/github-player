@@ -120,8 +120,11 @@ div[data-testid="stVerticalBlock"] > div { gap: 0.5rem !important; }
     border: 0.5px solid rgba(0,0,0,0.08);
     border-radius: 10px; padding: 16px;
     font-family: 'Inter', system-ui, sans-serif;
-    position: relative; height: 100%;
+    position: relative;
+    display: flex; flex-direction: column;
+    min-height: 560px;
 }
+.player-card .spacer { flex: 1; }   /* pushes sparkline to bottom for uniform height */
 .player-card.g1 { border: 1.5px solid #EF9F27; }
 .player-card.g2 { border: 1.5px solid #9CA3AF; }
 .player-card.g3 { border: 1.5px solid #C97E3B; }
@@ -191,6 +194,66 @@ div[data-testid="stVerticalBlock"] > div { gap: 0.5rem !important; }
 .sprite-svg { image-rendering: pixelated; image-rendering: crisp-edges; }
 .spr-bounce { animation: spriteBounce 0.55s ease-in-out infinite; }
 @keyframes spriteBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+/* ── Help popup (top-left floating) ── */
+.help-popup {
+    position: fixed; top: 14px; left: 14px;
+    z-index: 10000;
+    font-family: 'Inter', system-ui, sans-serif;
+}
+.help-popup summary {
+    list-style: none; cursor: pointer;
+    background: #FFFFFF; border: 0.5px solid rgba(0,0,0,0.12);
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 500; color: #6B6B6B;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    transition: all 0.15s ease;
+}
+.help-popup summary::-webkit-details-marker { display: none; }
+.help-popup summary:hover {
+    background: #EF9F27; color: white; border-color: #EF9F27;
+}
+.help-popup[open] summary {
+    background: #EF9F27; color: white; border-color: #EF9F27;
+}
+.help-popup[open] summary::after {
+    content: "✕"; font-size: 14px;
+}
+.help-popup[open] summary > span { display: none; }
+.help-card {
+    background: #FFFFFF;
+    border: 0.5px solid rgba(0,0,0,0.12);
+    border-radius: 10px;
+    padding: 16px 18px;
+    width: 340px;
+    margin-top: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+    font-size: 12px; line-height: 1.55; color: #1A1A1A;
+}
+.help-card h4 {
+    font-size: 14px; font-weight: 500; margin: 0 0 6px 0; color: #1A1A1A;
+}
+.help-card .help-section { margin-bottom: 10px; }
+.help-card .help-section:last-child { margin-bottom: 0; }
+.help-card .help-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 0;
+    border-top: 0.5px dashed rgba(0,0,0,0.07);
+}
+.help-card .help-row:first-of-type { border-top: none; }
+.help-card .help-icon {
+    font-size: 18px; width: 22px; flex-shrink: 0; text-align: center; line-height: 1.3;
+}
+.help-card .help-text { flex: 1; }
+.help-card .help-label {
+    font-weight: 500; color: #1A1A1A; font-size: 12px;
+}
+.help-card .help-desc { color: #6B6B6B; font-size: 11px; line-height: 1.5; }
+.help-card .help-tagline {
+    font-size: 11px; color: #6B6B6B; margin-bottom: 10px;
+    padding-bottom: 8px; border-bottom: 0.5px solid rgba(0,0,0,0.08);
+}
 
 /* ── Wandering sprites ── */
 .wanderer-bar {
