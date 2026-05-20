@@ -64,7 +64,7 @@ def get_level(xp: int) -> dict[str, Any]:
 def badge_pill_html(badge: dict) -> str:
     style = TIER_STYLES.get(badge["tier"], ("",))[0]
     return (
-        f'<span style="{style};display:inline-flex;align-items:center;gap:3px;'
-        f'font-size:10px;font-weight:500;padding:2px 7px;border-radius:20px;white-space:nowrap">'
+        f'<span style="{style};display:inline-flex;align-items:center;gap:2px;'
+        f'font-size:9.5px;font-weight:500;padding:1px 6px;border-radius:20px;white-space:nowrap">'
         f'{badge["icon"]} {badge["label"]}</span>'
     )

@@ -472,53 +472,60 @@ with tab_players:
             act_html    = " ".join(act_parts)
             badges_html = " ".join(badge_pill_html(b) for b in badges)
 
+            # Cap displayed badges so one over-decorated card doesn't blow up the
+            # uniform card height. Extras are summarized as +N.
+            MAX_BADGES = 4
+            shown_badges = badges[:MAX_BADGES]
+            extra_badge_count = len(badges) - MAX_BADGES
+            badges_html = " ".join(badge_pill_html(b) for b in shown_badges)
+            if extra_badge_count > 0:
+                badges_html += (
+                    f'<span style="font-size:9.5px;color:#6B6B6B;'
+                    f'padding:1px 6px;align-self:center">+{extra_badge_count}</span>'
+                )
+
             col.markdown(
                 f'<div class="player-card {RANK_CLASS.get(rank, "")}">'
                 f'<div class="power-badge">'
                 f'<div class="power-num">{power}</div>'
                 f'<div class="power-lbl">power</div></div>'
 
-                f'<div style="display:flex;justify-content:center;height:60px;'
-                f'align-items:flex-end;margin-bottom:10px">'
-                f'{render_sprite(i, px=5)}</div>'
+                f'<div class="pc-sprite">{render_sprite(i, px=5)}</div>'
 
-                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">'
-                f'{_avatar(m["login"], 34)}'
-                f'<div><div style="font-size:13px;font-weight:500">'
+                f'<div class="pc-identity">'
+                f'{_avatar(m["login"], 30)}'
+                f'<div><div style="font-size:12.5px;font-weight:500;line-height:1.2">'
                 f'<a href="https://github.com/{m["login"]}" target="_blank" '
                 f'style="color:#1A1A1A;text-decoration:none">{m["login"]}</a></div>'
-                f'<div style="font-size:11px;color:#6B6B6B">'
+                f'<div style="font-size:10.5px;color:#6B6B6B">'
                 f'{RANK_EMOJI.get(rank, f"#{rank}")} · {lvl["emoji"]} {lvl["title"]}</div>'
                 f'</div></div>'
 
-                f'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;'
-                f'background:#FAF8F5;border-radius:7px;border:.5px solid {lvl["color"]}33;'
-                f'margin-bottom:10px">'
-                f'<div style="font-size:22px;font-weight:500;color:{lvl["color"]}">LVL {lvl["num"]}</div>'
-                f'<div><div style="font-size:12px;font-weight:500;color:{lvl["color"]}">'
+                f'<div class="pc-level" style="border:.5px solid {lvl["color"]}33">'
+                f'<div class="pc-lvl-num" style="color:{lvl["color"]}">LVL {lvl["num"]}</div>'
+                f'<div><div style="font-size:11.5px;font-weight:500;color:{lvl["color"]};line-height:1.2">'
                 f'{lvl["emoji"]} {lvl["title"]}</div>'
                 f'<div style="font-size:10px;color:#6B6B6B">⚡ {xp:,} XP</div></div></div>'
 
-                f'<div style="margin-bottom:10px">'
-                f'<div style="display:flex;justify-content:space-between;'
-                f'font-size:10px;color:#6B6B6B;margin-bottom:3px">'
+                f'<div class="pc-xp">'
+                f'<div class="pc-xp-row">'
                 f'<span>Level {lvl["num"]}</span>'
                 f'<span>{lvl["progress"]}% → Level {lvl["num"] + 1}</span></div>'
                 f'<div class="xp-track">'
                 f'<div class="xp-fill" style="width:{lvl["progress"]}%;background:{lvl["color"]}"></div>'
                 f'</div></div>'
 
-                f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px">'
+                f'<div class="pc-mini">'
                 f'<div class="mini-stat"><div class="mini-val">{m["total_commits"]}</div><div class="mini-lbl">Commits</div></div>'
                 f'<div class="mini-stat"><div class="mini-val">+{m["lines_added"]:,}</div><div class="mini-lbl">Lines +</div></div>'
                 f'<div class="mini-stat"><div class="mini-val">-{m["lines_deleted"]:,}</div><div class="mini-lbl">Lines −</div></div>'
                 f'<div class="mini-stat"><div class="mini-val">{m["streak"]}d</div><div class="mini-lbl">Streak</div></div>'
                 f'</div>'
 
-                + (f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">{act_html}</div>' if act_html else "")
-                + (f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px">{badges_html}</div>' if badges_html else "")
+                + (f'<div class="pc-chips">{act_html}</div>' if act_html else "")
+                + (f'<div class="pc-chips">{badges_html}</div>' if badges_html else "")
 
-                # Spacer pushes the sparkline to the bottom so every card matches the tallest.
+                # Spacer pushes sparkline to bottom so every card matches.
                 + '<div class="spacer"></div>'
                 + _sparkline(m.get("weekly_commits", []))
                 + "</div>",

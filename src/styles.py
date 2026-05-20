@@ -58,12 +58,12 @@ section[data-testid="stSidebar"] {
 [data-baseweb="tab-highlight"],
 [data-baseweb="tab-border"] { display: none !important; }
 
-/* ── Remove column gap ── */
-div[data-testid="column"] { padding: 0 5px !important; }
+/* ── Column gap (breathing room between cards) ── */
+div[data-testid="column"] { padding: 0 7px !important; }
 div[data-testid="column"]:first-child { padding-left: 0 !important; }
 div[data-testid="column"]:last-child  { padding-right: 0 !important; }
 .stMarkdown { margin-bottom: 0 !important; }
-div[data-testid="stVerticalBlock"] > div { gap: 0.5rem !important; }
+div[data-testid="stVerticalBlock"] > div { gap: 0.6rem !important; }
 
 /* ── Stat card ── */
 .stat-card {
@@ -118,13 +118,26 @@ div[data-testid="stVerticalBlock"] > div { gap: 0.5rem !important; }
 .player-card {
     background: #FFFFFF;
     border: 0.5px solid rgba(0,0,0,0.08);
-    border-radius: 10px; padding: 16px;
+    border-radius: 10px; padding: 13px;
     font-family: 'Inter', system-ui, sans-serif;
     position: relative;
     display: flex; flex-direction: column;
-    min-height: 560px;
+    min-height: 480px;
 }
-.player-card .spacer { flex: 1; }   /* pushes sparkline to bottom for uniform height */
+.player-card .spacer { flex: 1; min-height: 4px; }  /* pushes sparkline to bottom */
+.player-card .pc-sprite     { display:flex; justify-content:center; height:50px;
+                              align-items:flex-end; margin-bottom:7px; }
+.player-card .pc-identity   { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.player-card .pc-level      { display:flex; align-items:center; gap:7px;
+                              padding:6px 9px; background:#FAF8F5;
+                              border-radius:7px; margin-bottom:8px; }
+.player-card .pc-lvl-num    { font-size:19px; font-weight:500; line-height:1; }
+.player-card .pc-xp         { margin-bottom:8px; }
+.player-card .pc-xp-row     { display:flex; justify-content:space-between;
+                              font-size:10px; color:#6B6B6B; margin-bottom:3px; }
+.player-card .pc-mini       { display:grid; grid-template-columns:repeat(4,1fr);
+                              gap:4px; margin-bottom:7px; }
+.player-card .pc-chips      { display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px; }
 .player-card.g1 { border: 1.5px solid #EF9F27; }
 .player-card.g2 { border: 1.5px solid #9CA3AF; }
 .player-card.g3 { border: 1.5px solid #C97E3B; }
