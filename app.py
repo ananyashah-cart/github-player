@@ -9,6 +9,7 @@ from src.api import (fetch_commit_detail, fetch_commits, fetch_contributor_stats
 from src.doc_health import SIGNAL_DEFS, get_grade, score as doc_score
 from src.gamification import compute_xp, get_level, badge_pill_html
 from src.languages import LanguageDetector
+from src.badges_page import build as build_badges_page
 from src.metrics import assign_badges, compute_contributor_metrics
 from src.player_grid import build as build_player_grid
 from src.sprites import SPRITES, render_sprite
@@ -78,11 +79,10 @@ HELP_HTML = """
         <div class="help-icon">🏆</div>
         <div class="help-text">
           <div class="help-label">Badges (good &amp; bad)</div>
-          <div class="help-desc">Auto-awarded. Achievements: Commit King,
-          Line Lord, On Streak. Activity: Night Owl (after 7pm), Early Riser
-          (before 9:30am), Workaholic (weekend), AI Whisperer (Claude commits),
-          Sober Royalty (Thu 6-9pm). Cursed: Silent Night (no commits 3+ days),
-          Documentation Dread (low comment ratio), Lazy Commit ("fix", "wip").</div>
+          <div class="help-desc">13 auto-awarded badges — achievements,
+          activity patterns, and cursed ones you don't want. Click any badge
+          on a player card to jump to its full explanation, or open the
+          <b>🎖 Badges</b> tab.</div>
         </div>
       </div>
     </div>
@@ -217,7 +217,38 @@ except Exception as exc:
 # ─────────────────────────────────────────────────────────────────────────────
 # TABS
 # ─────────────────────────────────────────────────────────────────────────────
-tab_repo, tab_players = st.tabs(["🏛  Repo", "🎮  Players"])
+tab_repo, tab_players, tab_badges = st.tabs(["🏛  Repo", "🎮  Players", "🎖  Badges"])
+
+# When a badge in a player card was clicked it set ?tab=badges#badge-<id> on
+# the parent. Streamlit's st.tabs has no programmatic-select API, so we inject
+# a 0-height iframe whose script reaches into window.parent.document and clicks
+# the Badges tab. Same-origin so this is allowed.
+if st.query_params.get("tab") == "badges":
+    components.html(
+        """
+        <script>
+        (function () {
+            const findAndClick = () => {
+                const doc  = window.parent.document;
+                const tabs = doc.querySelectorAll('[data-baseweb="tab"]');
+                for (const t of tabs) {
+                    if (t.innerText && t.innerText.indexOf('Badges') !== -1) {
+                        t.click();
+                        return true;
+                    }
+                }
+                return false;
+            };
+            // Streamlit may rerender; retry briefly until the tab is in the DOM.
+            let tries = 0;
+            const id = setInterval(() => {
+                if (findAndClick() || ++tries > 20) clearInterval(id);
+            }, 100);
+        })();
+        </script>
+        """,
+        height=0,
+    )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # REPO TAB
@@ -244,99 +275,65 @@ with tab_repo:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Doc Health  |  Leaderboard ────────────────────────────────────────────
-    left, right = st.columns([1, 2], gap="medium")
+    # ── Doc Health (full-width horizontal card) ──────────────────────────────
+    st.markdown('<div class="section-label">Doc Health</div>', unsafe_allow_html=True)
+    total   = health["total"]
+    letter, color, label = get_grade(total)
 
-    with left:
-        st.markdown('<div class="section-label">Doc Health</div>', unsafe_allow_html=True)
-        total   = health["total"]
-        letter, color, label = get_grade(total)
-
-        signals_html = ""
-        for sig_id, icon, sig_label, max_pts in SIGNAL_DEFS:
-            earned = health["scores"].get(sig_id, 0)
-            pct    = round(earned / max_pts * 100)
-            bar_color = "#4ade80" if pct >= 80 else "#fbbf24" if pct >= 50 else "#f87171"
-            signals_html += (
-                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
-                f'<span style="width:16px;text-align:center;font-size:13px">{icon}</span>'
-                f'<span style="font-size:11px;width:145px;flex-shrink:0">{sig_label}</span>'
-                f'<div class="signal-bar-bg"><div class="signal-bar" '
-                f'style="width:{pct}%;background:{bar_color}"></div></div>'
-                f'<span style="font-size:10px;color:#6B6B6B;width:42px;text-align:right">'
-                f'{earned}/{max_pts}p</span></div>'
-            )
-
-        fix_html = ""
-        if health["fix_list"] and total < 85:
-            items = "".join(
-                f'<div style="font-size:11px;color:#6B6B6B;padding:2px 0">{f}</div>'
-                for f in health["fix_list"]
-            )
-            fix_html = (
-                f'<div style="margin-top:10px;padding-top:10px;'
-                f'border-top:.5px solid rgba(0,0,0,.08)">'
-                f'<div style="font-size:10px;font-weight:500;text-transform:uppercase;'
-                f'letter-spacing:.05em;color:#6B6B6B;margin-bottom:5px">Fix List</div>'
-                f'{items}</div>'
-            )
-
-        st.markdown(
-            f'<div class="doc-card">'
-            f'<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">'
-            f'<div style="text-align:center">'
-            f'<span class="grade-letter" style="color:{color}">{letter}</span>'
-            f'<div style="font-size:12px;color:#6B6B6B;font-weight:500">{total} / 100</div>'
-            f'<div style="font-size:10px;color:#6B6B6B">{label}</div>'
-            f'</div></div>'
-            f'{signals_html}{fix_html}</div>',
-            unsafe_allow_html=True,
+    signals_html = ""
+    for sig_id, icon, sig_label, max_pts in SIGNAL_DEFS:
+        earned = health["scores"].get(sig_id, 0)
+        pct    = round(earned / max_pts * 100)
+        bar_color = "#4ade80" if pct >= 80 else "#fbbf24" if pct >= 50 else "#f87171"
+        signals_html += (
+            f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+            f'<span style="width:16px;text-align:center;font-size:13px">{icon}</span>'
+            f'<span style="font-size:11px;width:175px;flex-shrink:0">{sig_label}</span>'
+            f'<div class="signal-bar-bg"><div class="signal-bar" '
+            f'style="width:{pct}%;background:{bar_color}"></div></div>'
+            f'<span style="font-size:10px;color:#6B6B6B;width:46px;text-align:right">'
+            f'{earned}/{max_pts}p</span></div>'
         )
 
-    with right:
-        st.markdown('<div class="section-label">Contributor Leaderboard — Last 30 Days</div>',
-                    unsafe_allow_html=True)
+    fix_html = ""
+    if health["fix_list"] and total < 85:
+        items = "".join(
+            f'<div style="font-size:11px;color:#6B6B6B;padding:2px 0">{f}</div>'
+            for f in health["fix_list"][:6]
+        )
+        fix_html = (
+            f'<div style="font-size:10px;font-weight:500;text-transform:uppercase;'
+            f'letter-spacing:.05em;color:#6B6B6B;margin-bottom:5px">Fix List</div>'
+            f'{items}'
+        )
 
-        sorted_contribs = sorted(metrics_map.values(), key=lambda m: -m["total_commits"])
-        card_cols = st.columns(max(min(len(sorted_contribs), 4), 1))
-
-        for i, (col, m) in enumerate(zip(card_cols, sorted_contribs[:4])):
-            rank = i + 1
-            rank_str = {1: "🥇 #1", 2: "🥈 #2", 3: "🥉 #3"}.get(rank, f"#{rank}")
-            badges_html = " ".join(badge_pill_html(b) for b in (badge_map.get(m["login"]) or []))
-            top_cls  = "top" if rank == 1 else ""
-            gold_cls = "gold" if rank == 1 else ""
-            badges_row = (
-                f'<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px">{badges_html}</div>'
-                if badges_html else ""
-            )
-            spark = _sparkline(m.get("weekly_commits", []))
-
-            col.markdown(
-                f'<div class="contrib-card {top_cls}">'
-                f'<div style="display:flex;justify-content:center;height:46px;'
-                f'align-items:flex-end;margin-bottom:8px">{render_sprite(i)}</div>'
-                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-                f'{_avatar(m["login"], 28)}'
-                f'<div><div style="font-size:13px;font-weight:500">'
-                f'<a href="https://github.com/{m["login"]}" target="_blank" '
-                f'style="color:#1A1A1A;text-decoration:none">{m["login"]}</a></div>'
-                f'<span class="rank-chip {gold_cls}">{rank_str}</span></div></div>'
-                f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">'
-                f'<div><div style="font-size:10px;color:#6B6B6B">Commits</div>'
-                f'<div style="font-size:15px;font-weight:500">{m["total_commits"]}</div></div>'
-                f'<div><div style="font-size:10px;color:#6B6B6B">Lines +</div>'
-                f'<div style="font-size:15px;font-weight:500">+{m["lines_added"]:,}</div></div>'
-                f'<div><div style="font-size:10px;color:#6B6B6B">Lines −</div>'
-                f'<div style="font-size:15px;font-weight:500">-{m["lines_deleted"]:,}</div></div>'
-                f'<div><div style="font-size:10px;color:#6B6B6B">Streak</div>'
-                f'<div style="font-size:15px;font-weight:500">{m["streak"]}d</div></div>'
-                f'</div>'
-                f'{badges_row}{spark}</div>',
-                unsafe_allow_html=True,
-            )
+    st.markdown(
+        f'<div class="doc-card" style="display:grid;'
+        f'grid-template-columns:160px 1fr 1fr;gap:24px;align-items:start">'
+        # Left: grade
+        f'<div style="text-align:center">'
+        f'<span class="grade-letter" style="color:{color}">{letter}</span>'
+        f'<div style="font-size:12px;color:#6B6B6B;font-weight:500;margin-top:6px">'
+        f'{total} / 100</div>'
+        f'<div style="font-size:10px;color:#6B6B6B">{label}</div>'
+        f'</div>'
+        # Middle: signal bars
+        f'<div>{signals_html}</div>'
+        # Right: fix list
+        f'<div>{fix_html}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Top 4 Contributors (same player_grid component as Players tab) ──────
+    st.markdown('<div class="section-label">Top Contributors — Last 30 Days</div>',
+                unsafe_allow_html=True)
+    repo_top_players = sorted(metrics_map.values(), key=lambda m: -m["total_commits"])[:4]
+    if repo_top_players:
+        repo_grid_html, repo_grid_height = build_player_grid(repo_top_players, badge_map)
+        components.html(repo_grid_html, height=repo_grid_height, scrolling=False)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -388,6 +385,14 @@ with tab_players:
     st.markdown('<div class="section-label">Player Cards</div>', unsafe_allow_html=True)
     grid_html, grid_height = build_player_grid(players_by_xp, badge_map)
     components.html(grid_html, height=grid_height, scrolling=False)
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# BADGES TAB
+# ═════════════════════════════════════════════════════════════════════════════
+with tab_badges:
+    badges_html, badges_height = build_badges_page()
+    components.html(badges_html, height=badges_height, scrolling=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

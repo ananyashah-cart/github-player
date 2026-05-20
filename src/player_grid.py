@@ -11,9 +11,8 @@ from src.sprites import render_sprite
 
 RANK_BORDER = {1: "#EF9F27", 2: "#9CA3AF", 3: "#C97E3B"}
 RANK_EMOJI  = {1: "🥇", 2: "🥈", 3: "🥉"}
-MAX_BADGES  = 4
 PER_ROW     = 4
-CARD_HEIGHT = 540     # used for iframe height calc
+CARD_HEIGHT = 640     # taller now to fit all badges (no cap)
 ROW_GAP     = 14
 
 
@@ -59,14 +58,15 @@ def _card_html(m: dict, rank: int, badges: list, sprite_idx: int) -> str:
     if m["friday_commits"]: act_parts.append(f'<span class="act-chip">😈 {m["friday_commits"]} fri</span>')
     act_html = " ".join(act_parts)
 
-    shown = badges[:MAX_BADGES]
-    extra = len(badges) - MAX_BADGES
-    badges_html = " ".join(badge_pill_html(b) for b in shown)
-    if extra > 0:
-        badges_html += (
-            f'<span style="font-size:9.5px;color:#6B6B6B;'
-            f'padding:1px 6px;align-self:center">+{extra}</span>'
-        )
+    # Show every badge — each one is a clickable link to its explanation
+    # (?tab=badges#badge-<id>). target=_top so the click navigates the parent
+    # window out of this iframe.
+    badges_html = " ".join(
+        f'<a class="badge-link" href="?tab=badges#badge-{b["id"]}" '
+        f'target="_top" title="What does {b["label"]} mean? Click for details.">'
+        f'{badge_pill_html(b)}</a>'
+        for b in badges
+    )
 
     border_css = f"border:1.5px solid {border};" if border else "border:0.5px solid rgba(0,0,0,0.08);"
     rank_label = RANK_EMOJI.get(rank, f"#{rank}")
@@ -185,6 +185,12 @@ body { margin: 0; padding: 0; background: #FAF8F5;
     border-radius: 6px; padding: 3px 8px;
     font-size: 11.5px; white-space: nowrap;
 }
+.badge-link {
+    display: inline-block; text-decoration: none;
+    transition: transform 0.12s ease, filter 0.12s ease;
+}
+.badge-link:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.badge-link:active { transform: translateY(0); }
 
 .sprite-svg { image-rendering: pixelated; image-rendering: crisp-edges; }
 .spr-bounce { animation: spriteBounce 0.55s ease-in-out infinite; }
