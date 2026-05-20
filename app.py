@@ -24,6 +24,20 @@ st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
 DEFAULT_REPO = "ananyashah-cart/Internet-Reliability-Code-Repository"
 
+# Pull token/repo from Streamlit secrets if available (deployed app), else fall
+# back to whatever the user types in the sidebar (local dev).
+try:
+    _SECRET_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+    _SECRET_REPO  = st.secrets.get("DEFAULT_REPO", DEFAULT_REPO)
+except Exception:
+    _SECRET_TOKEN, _SECRET_REPO = "", DEFAULT_REPO
+
+# Auto-connect on first load when secrets are present (no PAT gate for visitors).
+if _SECRET_TOKEN and not st.session_state.get("ready"):
+    st.session_state["repo"]  = _SECRET_REPO
+    st.session_state["token"] = _SECRET_TOKEN
+    st.session_state["ready"] = True
+
 # ─────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ─────────────────────────────────────────────────────────────────────────────
@@ -85,7 +99,7 @@ with st.sidebar:
 
     repo_input = st.text_input(
         "Repository", placeholder="owner/repo",
-        value=st.session_state.get("repo", DEFAULT_REPO),
+        value=st.session_state.get("repo", _SECRET_REPO),
     )
     token_input = st.text_input(
         "Personal Access Token", type="password",
@@ -167,18 +181,15 @@ with tab_repo:
         f'<span class="lang-pill">{l}</span>'
         for l, _ in sorted(langs.items(), key=lambda x: -x[1])[:3]
     )
-    cols8 = st.columns(8)
     strip = [
         ("Repo size",    f"{repo_info.get('size',0)/1024:.1f} MB",        ""),
         ("Language",     repo_info.get("language") or "—",                ""),
         ("Top langs",    lang_pills,                                       ""),
-        ("Stars",        f"{repo_info.get('stargazers_count',0):,}",      ""),
-        ("Forks",        f"{repo_info.get('forks_count',0):,}",           ""),
-        ("Open issues",  f"{repo_info.get('open_issues_count',0):,}",     ""),
         ("Last pushed",  _time_ago(repo_info.get("pushed_at","")),        ""),
         ("Contributors", str(len(contributors)),                           "total"),
     ]
-    for col, (lbl, val, sub) in zip(cols8, strip):
+    strip_cols = st.columns(len(strip))
+    for col, (lbl, val, sub) in zip(strip_cols, strip):
         col.markdown(_card(lbl, val, sub), unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
