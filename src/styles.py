@@ -211,32 +211,33 @@ div[data-testid="stVerticalBlock"] > div { gap: 0.6rem !important; }
 .spr-bounce { animation: spriteBounce 0.55s ease-in-out infinite; }
 @keyframes spriteBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 
-/* ── Help popup (top-left floating) ── */
+/* ── Help popup (top-left floating, checkbox-toggled — no JS, no <details>) ── */
 .help-popup {
     position: fixed; top: 14px; left: 14px;
     z-index: 10000;
     font-family: 'Inter', system-ui, sans-serif;
 }
-.help-popup summary {
-    list-style: none; cursor: pointer;
+.help-popup .help-toggle-input { display: none; }
+.help-popup .help-toggle-btn {
+    cursor: pointer;
     background: #FFFFFF; border: 0.5px solid rgba(0,0,0,0.12);
     width: 36px; height: 36px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-size: 16px; font-weight: 500; color: #6B6B6B;
     box-shadow: 0 2px 6px rgba(0,0,0,0.06);
     transition: all 0.15s ease;
+    user-select: none;
 }
-.help-popup summary::-webkit-details-marker { display: none; }
-.help-popup summary:hover {
+.help-popup .help-toggle-btn::before { content: "?"; }
+.help-popup .help-toggle-btn:hover {
     background: #EF9F27; color: white; border-color: #EF9F27;
 }
-.help-popup[open] summary {
+.help-popup .help-toggle-input:checked ~ .help-toggle-btn {
     background: #EF9F27; color: white; border-color: #EF9F27;
 }
-.help-popup[open] summary::after {
-    content: "✕"; font-size: 14px;
-}
-.help-popup[open] summary > span { display: none; }
+.help-popup .help-toggle-input:checked ~ .help-toggle-btn::before { content: "✕"; font-size: 14px; }
+.help-popup .help-card { display: none; }
+.help-popup .help-toggle-input:checked ~ .help-card { display: block; }
 .help-card {
     background: #FFFFFF;
     border: 0.5px solid rgba(0,0,0,0.12);

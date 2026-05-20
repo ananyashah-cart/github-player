@@ -26,11 +26,14 @@ st.set_page_config(
 st.markdown(f"<style>{CSS}</style>", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HELP POPUP (top-left floating "?" — first-time visitor explainer)
+# HELP POPUP (top-left floating — opens by default, ✕ to close)
+# Rendered via st.html (not st.markdown) so the markup isn't run through the
+# markdown sanitizer that mangles <details>/<input>/<label> tags.
 # ─────────────────────────────────────────────────────────────────────────────
 HELP_HTML = """
-<details class="help-popup">
-  <summary><span>?</span></summary>
+<div class="help-popup">
+  <input type="checkbox" id="help-toggle" class="help-toggle-input" checked>
+  <label for="help-toggle" class="help-toggle-btn" aria-label="Toggle help"></label>
   <div class="help-card">
     <h4>🎮 What is this?</h4>
     <div class="help-tagline">
@@ -81,9 +84,14 @@ HELP_HTML = """
       </div>
     </div>
   </div>
-</details>
+</div>
 """
-st.markdown(HELP_HTML, unsafe_allow_html=True)
+# Prefer st.html (Streamlit 1.33+) which renders raw HTML untouched. Fall back
+# to st.markdown for older versions.
+if hasattr(st, "html"):
+    st.html(HELP_HTML)
+else:
+    st.markdown(HELP_HTML, unsafe_allow_html=True)
 
 DEFAULT_REPO = "ananyashah-cart/Internet-Reliability-Code-Repository"
 
