@@ -4,9 +4,10 @@ from datetime import datetime
 import streamlit as st
 
 from src.api import (fetch_commits, fetch_contributor_stats, fetch_contributors,
-                     fetch_languages, fetch_repo)
+                     fetch_repo, fetch_tree)
 from src.doc_health import SIGNAL_DEFS, get_grade, score as doc_score
 from src.gamification import compute_xp, get_level, badge_pill_html
+from src.languages import LanguageDetector
 from src.metrics import assign_badges, compute_contributor_metrics, is_lazy
 from src.sprites import SPRITES, render_sprite
 from src.styles import CSS
@@ -148,10 +149,12 @@ TOKEN = st.session_state["token"]
 try:
     with st.spinner("Fetching repo data…"):
         repo_info    = fetch_repo(REPO, TOKEN)
-        langs        = fetch_languages(REPO, TOKEN)
+        tree         = fetch_tree(REPO, TOKEN)
         contributors = fetch_contributors(REPO, TOKEN)
         commits      = fetch_commits(REPO, TOKEN)
         raw_stats    = fetch_contributor_stats(REPO, TOKEN)
+
+    langs_ranked = LanguageDetector().rank(tree)
 
     with st.spinner("Computing metrics…"):
         metrics_map = compute_contributor_metrics(raw_stats, commits)
@@ -178,12 +181,12 @@ with tab_repo:
     st.markdown('<div class="section-label">Repo Overview</div>', unsafe_allow_html=True)
 
     lang_pills = "".join(
-        f'<span class="lang-pill">{l}</span>'
-        for l, _ in sorted(langs.items(), key=lambda x: -x[1])[:3]
+        f'<span class="lang-pill">{ls.name}</span>' for ls in langs_ranked[:3]
     )
+    primary_lang = langs_ranked[0].name if langs_ranked else "—"
     strip = [
         ("Repo size",    f"{repo_info.get('size',0)/1024:.1f} MB",        ""),
-        ("Language",     repo_info.get("language") or "—",                ""),
+        ("Language",     primary_lang,                                     "by file count"),
         ("Top langs",    lang_pills,                                       ""),
         ("Last pushed",  _time_ago(repo_info.get("pushed_at","")),        ""),
         ("Contributors", str(len(contributors)),                           "total"),

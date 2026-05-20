@@ -85,3 +85,19 @@ def fetch_raw_file(url: str, token: str) -> str:
         return _get(url, token, raw=True)
     except Exception:
         return ""
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_tree(repo: str, token: str) -> list:
+    """Return every file blob in the repo's default branch as a flat list."""
+    try:
+        repo_info  = _get(f"https://api.github.com/repos/{repo}", token)
+        branch     = repo_info.get("default_branch", "main")
+        branch_obj = _get(f"https://api.github.com/repos/{repo}/branches/{branch}", token)
+        sha        = branch_obj["commit"]["commit"]["tree"]["sha"]
+        tree       = _get(
+            f"https://api.github.com/repos/{repo}/git/trees/{sha}?recursive=1", token
+        )
+        return [e for e in tree.get("tree", []) if e.get("type") == "blob"]
+    except Exception:
+        return []

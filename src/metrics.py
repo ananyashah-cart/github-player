@@ -30,31 +30,35 @@ def _streak(date_set: set) -> int:
     return mx
 
 
+def _blank_metrics(login: str, avatar: str = "") -> dict:
+    return {
+        "login": login,
+        "avatar": avatar or f"https://avatars.githubusercontent.com/u/0?u={login}",
+        "total_commits": 0,
+        "lines_added": 0,
+        "lines_deleted": 0,
+        "night_commits": 0,
+        "early_commits": 0,
+        "friday_commits": 0,
+        "streak": 0,
+        "avg_gap_hours": float("inf"),
+        "commit_days": set(),
+        "commit_timestamps": [],
+        "weekly_commits": [],
+    }
+
+
 def compute_contributor_metrics(stats_data: list, commit_list: list) -> dict:
     thirty_ago = datetime.now(timezone.utc) - timedelta(days=30)
     metrics: dict = {}
 
-    # Weekly stats → totals, lines
-    for contributor in stats_data:
+    # Pass 1 — weekly stats (preferred: gives us lines added/deleted).
+    for contributor in stats_data or []:
         author = contributor.get("author")
         if not author:
             continue
         login = author["login"]
-        metrics[login] = {
-            "login": login,
-            "avatar": author["avatar_url"],
-            "total_commits": 0,
-            "lines_added": 0,
-            "lines_deleted": 0,
-            "night_commits": 0,
-            "early_commits": 0,
-            "friday_commits": 0,
-            "streak": 0,
-            "avg_gap_hours": float("inf"),
-            "commit_days": set(),
-            "commit_timestamps": [],
-            "weekly_commits": [],
-        }
+        metrics[login] = _blank_metrics(login, author.get("avatar_url", ""))
         for w in contributor.get("weeks", []):
             week_end = datetime.fromtimestamp(w["w"] + 7 * 86400, timezone.utc)
             if week_end >= thirty_ago:
@@ -63,20 +67,33 @@ def compute_contributor_metrics(stats_data: list, commit_list: list) -> dict:
                 metrics[login]["lines_deleted"]  += w["d"]
                 metrics[login]["weekly_commits"].append({"ts": w["w"] * 1000, "c": w["c"]})
 
-    # Commit list → time-based signals
+    # Pass 2 — walk the commit list. Seeds any contributor missing from stats
+    # (covers the 202-race on /stats/contributors) and adds time-based signals.
+    stats_had_commits = {login for login, m in metrics.items() if m["total_commits"] > 0}
     for commit in commit_list:
         author_obj = commit.get("author") or {}
         login = author_obj.get("login", "") if isinstance(author_obj, dict) else ""
-        if not login or login not in metrics:
+        if not login:
+            # Fall back to commit.author.name when GitHub didn't resolve a user.
+            login = ((commit.get("commit") or {}).get("author") or {}).get("name", "")
+        if not login:
             continue
+        if login not in metrics:
+            avatar = author_obj.get("avatar_url", "") if isinstance(author_obj, dict) else ""
+            metrics[login] = _blank_metrics(login, avatar)
+
         date_str = (commit.get("commit") or {}).get("author", {}).get("date", "")
         dt = _parse_dt(date_str)
         if not dt:
             continue
+
+        # If /stats/contributors didn't give us a commit count, count from /commits.
+        if login not in stats_had_commits:
+            metrics[login]["total_commits"] += 1
+
         hour = dt.hour
         dow  = dt.weekday()   # 4 = Friday (Python convention)
         day_key = dt.strftime("%Y-%m-%d")
-
         if hour >= 18:
             metrics[login]["night_commits"] += 1
         if hour < 10:
@@ -86,7 +103,7 @@ def compute_contributor_metrics(stats_data: list, commit_list: list) -> dict:
         metrics[login]["commit_days"].add(day_key)
         metrics[login]["commit_timestamps"].append(dt.timestamp())
 
-    # Derived: streak + avg gap
+    # Derived: streak + avg gap.
     for m in metrics.values():
         m["streak"] = _streak(m["commit_days"])
         ts = sorted(m["commit_timestamps"])
