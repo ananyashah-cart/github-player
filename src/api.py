@@ -98,6 +98,24 @@ def fetch_raw_file(url: str, token: str) -> str:
         return ""
 
 
+@st.cache_data(ttl=60, show_spinner=False)
+def fetch_workflow_runs(repo: str, token: str) -> list:
+    """Most recent run per workflow name."""
+    try:
+        data = _get(
+            f"https://api.github.com/repos/{repo}/actions/runs?per_page=30", token
+        )
+        runs = data.get("workflow_runs", []) if isinstance(data, dict) else []
+        seen: dict = {}
+        for run in runs:
+            name = run.get("name", "")
+            if name and name not in seen:
+                seen[name] = run
+        return list(seen.values())
+    except Exception:
+        return []
+
+
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_tree(repo: str, token: str) -> list:
     """Return every file blob in the repo's default branch as a flat list."""
